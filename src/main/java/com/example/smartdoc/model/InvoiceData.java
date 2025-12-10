@@ -20,6 +20,7 @@ public class InvoiceData {
     private String invoiceCode;  // 发票号码
     private String category;     // 分类
     private Long userId;         //用户id
+    private Integer isAnomaly;   // 新增：异常标记 (0=正常, 1=异常)
 
     @Transient
     private String rawImageUrl;

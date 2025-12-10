@@ -4,6 +4,7 @@ import com.example.smartdoc.model.InvoiceData;
 import com.example.smartdoc.model.User;
 import com.example.smartdoc.repository.InvoiceRepository;
 import com.example.smartdoc.service.OcrService;
+import com.example.smartdoc.utils.AnomalyDetectionUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -39,14 +40,46 @@ public class DocController {
     // 2. 保存归档 (Create) - 绑定当前用户
     @PostMapping("/save")
     public String saveDoc(@RequestBody InvoiceData data) {
-        // A. 获取当前登录用户
         User currentUser = getCurrentUser();
-        if (currentUser == null) {
-            return "error: not login";
-        }
+        if (currentUser == null) return "error: not login";
 
-        // B. 绑定 UserID
         data.setUserId(currentUser.getId());
+
+        // --- 🔥 核心升级：触发异常检测算法 ---
+        try {
+            // 1. 取出该用户、该分类下的所有历史金额 (作为训练数据)
+            List<InvoiceData> historyList = invoiceRepository.findByUserIdAndCategoryOrderByIdDesc(
+                    currentUser.getId(),
+                    data.getCategory() // 只跟同类别的比，比如餐饮只跟餐饮比
+            );
+
+            // 提取金额列表
+            List<Double> historyAmounts = historyList.stream()
+                    .map(InvoiceData::getAmount)
+                    .toList(); // JDK 16+ 写法，如果是旧版用 .collect(Collectors.toList())
+
+            // 只有历史数据足够多(比如大于5条)才开始检测，否则样本太少不准
+            if (historyAmounts.size() >= 5) {
+                double mean = AnomalyDetectionUtil.calculateMean(historyAmounts);
+                double stdDev = AnomalyDetectionUtil.calculateStdDev(historyAmounts, mean);
+
+                // 2. 算法判定
+                boolean isWeird = AnomalyDetectionUtil.isAnomaly(data.getAmount(), mean, stdDev);
+
+                // 3. 打标
+                data.setIsAnomaly(isWeird ? 1 : 0);
+
+                if (isWeird) {
+                    System.out.println("⚠️ 发现异常消费！金额: " + data.getAmount() + ", 均值: " + mean);
+                }
+            } else {
+                data.setIsAnomaly(0); // 样本不足默认正常
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            data.setIsAnomaly(0); // 算法出错兜底为正常
+        }
+        // ---------------------------------------
 
         invoiceRepository.save(data);
         return "success";

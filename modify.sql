@@ -38,3 +38,6 @@ CREATE TABLE `sys_budget` (
                               UNIQUE KEY `uk_user_category` (`user_id`, `category`) -- 防止同一用户对同一分类设多条预算
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='预算管理表';
 
+USE `smartdoc`;
+ALTER TABLE `invoice_record` ADD COLUMN `is_anomaly` TINYINT(1) DEFAULT 0 COMMENT '是否异常(0否 1是)';
+
