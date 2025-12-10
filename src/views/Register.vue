@@ -69,24 +69,38 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Register.vue - 用户注册页面
+ *
+ * 功能概述:
+ * 1. 提供用户注册表单 (用户名、昵称、密码)
+ * 2. 实现表单验证 (必填、密码长度、确认密码一致性)
+ * 3. 调用后端注册接口创建新用户
+ */
+
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { DocumentChecked, User, Lock, Key, Postcard } from '@element-plus/icons-vue'
 import { ElMessage, type FormInstance } from 'element-plus'
 import axios from 'axios'
 
-const router = useRouter()
-const loading = ref(false)
-const formRef = ref<FormInstance>()
+// --- 路由和状态 ---
+const router = useRouter() // 路由导航实例
+const loading = ref(false) // 提交加载状态
+const formRef = ref<FormInstance>() // 表单引用 (用于触发验证)
 
+// 注册表单数据
 const registerForm = reactive({
-  username: '',
-  nickname: '',
-  password: '',
-  confirmPassword: '',
+  username: '', // 用户名 (登录账号，唯一)
+  nickname: '', // 昵称 (显示名称)
+  password: '', // 密码
+  confirmPassword: '', // 确认密码
 })
 
-// 表单验证规则
+/**
+ * 表单验证规则
+ * Element Plus 表单组件的验证配置
+ */
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [
@@ -96,6 +110,7 @@ const rules = {
   confirmPassword: [
     { required: true, message: '请确认密码', trigger: 'blur' },
     {
+      // 自定义验证器: 检查两次密码是否一致
       validator: (rule: any, value: string, callback: any) => {
         if (value !== registerForm.password) {
           callback(new Error('两次输入的密码不一致'))
@@ -108,22 +123,32 @@ const rules = {
   ],
 }
 
+/**
+ * 处理注册请求
+ *
+ * 流程:
+ * 1. 触发表单验证
+ * 2. 发送注册请求到后端
+ * 3. 注册成功后跳转到登录页
+ */
 const handleRegister = async () => {
   if (!formRef.value) return
 
-  // 1. 校验表单
+  // 1. 触发表单验证
   await formRef.value.validate(async (valid) => {
     if (valid) {
       loading.value = true
       try {
-        // 2. 发送请求 (不需要传 confirmPassword 给后端)
+        // 2. 构建请求数据 (不需要传 confirmPassword 给后端)
         const { confirmPassword, ...postData } = registerForm
         const res = await axios.post('http://localhost:8080/api/user/register', postData)
 
         if (res.data.code === 200) {
           ElMessage.success('注册成功，请登录')
-          router.push('/login') // 跳转回登录页
+          // 跳转到登录页
+          router.push('/login')
         } else {
+          // 显示后端返回的错误信息 (如用户名已存在)
           ElMessage.error(res.data.msg || '注册失败')
         }
       } catch (error) {

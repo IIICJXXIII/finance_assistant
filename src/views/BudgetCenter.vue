@@ -73,17 +73,41 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * BudgetCenter.vue - 预算控制中心页面
+ *
+ * 功能概述:
+ * 1. 设置各消费分类的月度预算限额
+ * 2. 实时监控各分类的支出进度
+ * 3. 提供预算耗尽预警和超支提示
+ *
+ * 核心功能:
+ * - 进度条: 直观展示预算使用情况
+ * - 状态色彩: 绿色正常/黄色预警/红色超支
+ */
+
 import { ref, onMounted, reactive } from 'vue'
 import { Plus, Delete } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
-const budgetList = ref<any[]>([])
-const dialogVisible = ref(false)
-const form = reactive({ category: '', limitAmount: 1000 })
+// ===== 响应式状态 =====
+const budgetList = ref<any[]>([]) // 预算列表数据
+const dialogVisible = ref(false) // 新增弹窗显示状态
 
+// 新增预算表单数据
+const form = reactive({
+  category: '', // 消费分类
+  limitAmount: 1000, // 预算限额，默认 1000
+})
+
+/** 组件挂载时获取预算列表 */
 onMounted(() => fetchList())
 
+/**
+ * 获取预算列表
+ * 后端返回包含已用金额 (usedAmount) 和限额 (limitAmount)
+ */
 const fetchList = async () => {
   try {
     const res = await axios.get('http://localhost:8080/api/budget/list')
@@ -95,6 +119,10 @@ const fetchList = async () => {
   }
 }
 
+/**
+ * 保存预算设置
+ * 将新的预算限额提交到后端
+ */
 const saveBudget = async () => {
   if (!form.category) return ElMessage.warning('请选择分类')
   try {
@@ -102,13 +130,17 @@ const saveBudget = async () => {
     if (res.data.code === 200) {
       ElMessage.success('设置成功')
       dialogVisible.value = false
-      fetchList()
+      fetchList() // 刷新列表
     }
   } catch (e) {
     ElMessage.error('保存失败')
   }
 }
 
+/**
+ * 删除预算设置
+ * 弹出确认框后调用删除接口
+ */
 const handleDelete = (id: number) => {
   ElMessageBox.confirm('确定删除该预算设定吗？', '提示', { type: 'warning' }).then(async () => {
     await axios.delete(`http://localhost:8080/api/budget/delete/${id}`)
@@ -117,26 +149,42 @@ const handleDelete = (id: number) => {
   })
 }
 
-// 辅助计算函数
+// ===== 辅助计算函数 =====
+
+/**
+ * 计算预算使用百分比
+ * 用于进度条显示
+ */
 const calculatePercent = (item: any) => {
   const p = (item.usedAmount / item.limitAmount) * 100
+  // 限制最大 100%，超出的仍显示为 100%
   return p > 100 ? 100 : Number(p.toFixed(1))
 }
 
+/**
+ * 获取进度条状态
+ * @returns 'success' | 'warning' | 'exception'
+ */
 const getStatus = (item: any) => {
   const p = item.usedAmount / item.limitAmount
-  if (p >= 1) return 'exception' // 红色 (超支)
-  if (p >= 0.8) return 'warning' // 黄色 (预警)
-  return 'success' // 绿色 (正常)
+  if (p >= 1) return 'exception' // 红色: 已超支
+  if (p >= 0.8) return 'warning' // 黄色: 预警 (80%以上)
+  return 'success' // 绿色: 正常
 }
 
+/**
+ * 获取状态文字颜色
+ */
 const getStatusColor = (item: any) => {
   const status = getStatus(item)
-  if (status === 'exception') return '#f56c6c'
-  if (status === 'warning') return '#e6a23c'
-  return '#67c23a'
+  if (status === 'exception') return '#f56c6c' // 红色
+  if (status === 'warning') return '#e6a23c' // 橙色
+  return '#67c23a' // 绿色
 }
 
+/**
+ * 获取状态描述文字
+ */
 const getStatusText = (item: any) => {
   const p = item.usedAmount / item.limitAmount
   if (p >= 1) return `⚠️ 已超支 ¥${(item.usedAmount - item.limitAmount).toFixed(2)}`

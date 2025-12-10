@@ -69,56 +69,86 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * StatsDashboard.vue - 数据报表仪表板
+ *
+ * 功能概述:
+ * 1. 展示核心统计指标卡片 (总金额、本月支出、高频分类)
+ * 2. 费用类型分布饼图 - ECharts 实现
+ * 3. 支出趋势折线图 + AI 线性回归预测
+ *
+ * 技术要点:
+ * - ECharts: 专业的数据可视化库
+ * - 线性回归: 后端计算下月支出预测值
+ */
+
 import { ref, onMounted, computed, nextTick } from 'vue'
 import { Money, Wallet, PieChart } from '@element-plus/icons-vue'
-import * as echarts from 'echarts'
+import * as echarts from 'echarts' // ECharts 图表库
 import axios from 'axios'
 
-// --- 状态定义 ---
-const allData = ref<any[]>([])
-const pieChartRef = ref(null)
-const lineChartRef = ref(null)
+// ===== 响应式状态 =====
+const allData = ref<any[]>([]) // 全部归档数据
+const pieChartRef = ref(null) // 饼图 DOM 引用
+const lineChartRef = ref(null) // 折线图 DOM 引用
 
-// --- 计算属性 (基于全量数据做简单统计) ---
+// ===== 计算属性 (基于全量数据统计) =====
+
+/** 累计归档金额 */
 const totalAmount = computed(() => allData.value.reduce((sum, item) => sum + item.amount, 0))
+
+/** 总票据数量 */
 const totalCount = computed(() => allData.value.length)
+
+/** 本月支出金额 */
 const currentMonthAmount = computed(() => {
+  // 获取当前月份字符串 (格式: YYYY-MM)
   const nowStr = new Date().toISOString().slice(0, 7)
   return allData.value
     .filter((item) => item.date.startsWith(nowStr))
     .reduce((sum, item) => sum + item.amount, 0)
 })
+
+/** 最后更新时间 */
 const lastUpdate = computed(() => {
   if (allData.value.length === 0) return '-'
   return allData.value[0].createTime?.replace('T', ' ').slice(0, 16) || '刚刚'
 })
 
+// 最高频分类统计
 const topCategory = ref('-')
 const topCategoryPercent = ref('0')
 
-// --- 核心逻辑 ---
+// ===== 核心逻辑 =====
+
+/** 组件挂载时初始化 */
 onMounted(async () => {
   await fetchData()
+  // 添加窗口尺寸变化监听，使图表自适应
   window.addEventListener('resize', handleResize)
 })
 
+/**
+ * 获取数据并渲染图表
+ */
 const fetchData = async () => {
   try {
-    // 1. 获取列表用于计算顶部卡片和饼图 (保持不变)
+    // 1. 获取列表数据用于计算顶部卡片和饼图
     const listRes = await axios.get('http://localhost:8080/api/doc/list')
     allData.value = listRes.data
     calculateTopCategory()
 
-    // 渲染饼图
+    // 渲染饼图 (使用 nextTick 确保 DOM 已渲染)
     nextTick(() => {
       if (pieChartRef.value) renderPieChart()
     })
 
-    // 2. 获取趋势预测数据 (新增逻辑)
+    // 2. 获取趋势预测数据 (后端线性回归计算)
     const trendRes = await axios.get('http://localhost:8080/api/stats/trend')
     if (trendRes.data.code === 200) {
       nextTick(() => {
-        if (lineChartRef.value) renderLineChart(trendRes.data.data) // 传入后端算好的预测数据
+        // 传入后端计算好的预测数据渲染折线图
+        if (lineChartRef.value) renderLineChart(trendRes.data.data)
       })
     }
   } catch (error) {
@@ -126,12 +156,20 @@ const fetchData = async () => {
   }
 }
 
+/**
+ * 计算最高频分类
+ * 统计各分类出现次数，找出最多的
+ */
 const calculateTopCategory = () => {
   if (allData.value.length === 0) return
+
+  // 统计各分类出现次数
   const map: Record<string, number> = {}
   allData.value.forEach((item) => {
     map[item.category] = (map[item.category] || 0) + 1
   })
+
+  // 找出最大值
   let max = 0
   let name = ''
   for (const key in map) {
@@ -140,25 +178,32 @@ const calculateTopCategory = () => {
       name = key
     }
   }
+
   topCategory.value = name
   topCategoryPercent.value = ((max / totalCount.value) * 100).toFixed(1)
 }
 
-// --- ECharts 图表渲染 ---
-let pieChart: any = null
-let lineChart: any = null
+// ===== ECharts 图表渲染 =====
 
+let pieChart: any = null // 饼图实例
+let lineChart: any = null // 折线图实例
+
+/**
+ * 渲染饼图 - 费用类型分布
+ */
 const renderPieChart = () => {
+  // 初始化 ECharts 实例
   pieChart = echarts.init(pieChartRef.value)
 
-  // 数据聚合
+  // 数据聚合: 按分类统计金额
   const map: Record<string, number> = {}
   allData.value.forEach((item) => {
     map[item.category] = (map[item.category] || 0) + item.amount
   })
+  // 转换为 ECharts 所需的数据格式
   const data = Object.keys(map).map((key) => ({ value: map[key], name: key }))
 
-  // 配置
+  // 配置饼图选项
   pieChart.setOption({
     tooltip: { trigger: 'item', formatter: '{b}: ¥{c} ({d}%)' },
     legend: { bottom: '0%', left: 'center' },
@@ -167,7 +212,7 @@ const renderPieChart = () => {
       {
         name: '费用分布',
         type: 'pie',
-        radius: ['40%', '70%'],
+        radius: ['40%', '70%'], // 空心饼图
         avoidLabelOverlap: false,
         itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
         label: { show: false },
@@ -178,24 +223,33 @@ const renderPieChart = () => {
   })
 }
 
-// 核心修改：渲染折线图 (包含预测)
+/**
+ * 渲染折线图 - 支出趋势与 AI 预测
+ *
+ * 图表包含两条线:
+ * 1. 实线: 历史真实支出数据
+ * 2. 虚线: 基于线性回归的下月预测值
+ *
+ * @param chartData - 后端返回的趋势数据
+ */
 const renderLineChart = (chartData: any) => {
   lineChart = echarts.init(lineChartRef.value)
 
-  // 构造 X 轴：历史月份 + 下月预测
+  // 构造 X 轴: 历史月份 + 下月预测
   const xData = [...chartData.months, '下月预测']
 
   // 构造 Y 轴数据
-  // 1. 真实数据系列：最后补一个 null，为了让实线在这里断开
+  // 1. 真实数据系列: 最后补一个 null，让实线在此断开
   const realSeries = [...chartData.amounts, null]
 
-  // 2. 预测数据系列：前面补 null，只画最后一段虚线
-  // 为了让虚线和实线连接起来，预测系列的起点必须是真实数据的最后一个点
+  // 2. 预测数据系列: 前面补 null，只画最后一段虚线
+  // 为了让虚线和实线连接起来，预测系列的起点是真实数据的最后一个点
   const lastRealValue = chartData.amounts[chartData.amounts.length - 1] || 0
   const predictSeries = new Array(chartData.amounts.length - 1).fill(null)
   predictSeries.push(lastRealValue) // 连接点
   predictSeries.push(Number(chartData.prediction).toFixed(2)) // 预测点
 
+  // 配置折线图选项
   lineChart.setOption({
     tooltip: { trigger: 'axis' },
     grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
@@ -209,6 +263,7 @@ const renderLineChart = (chartData: any) => {
         data: realSeries,
         smooth: true,
         lineStyle: { width: 3, color: '#409EFF' },
+        // 面积渐变填充
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
             { offset: 0, color: 'rgba(64,158,255,0.5)' },
@@ -220,8 +275,8 @@ const renderLineChart = (chartData: any) => {
         name: 'AI预测',
         type: 'line',
         data: predictSeries,
-        smooth: false, // 预测线一般用直线表示线性回归
-        lineStyle: { width: 3, color: '#E6A23C', type: 'dashed' }, // 虚线
+        smooth: false, // 预测线用直线表示线性回归
+        lineStyle: { width: 3, color: '#E6A23C', type: 'dashed' }, // 虚线样式
         itemStyle: { color: '#E6A23C' },
         label: {
           show: true,
@@ -235,6 +290,10 @@ const renderLineChart = (chartData: any) => {
   })
 }
 
+/**
+ * 窗口尺寸变化处理
+ * 重新调整图表尺寸以适应新的容器大小
+ */
 const handleResize = () => {
   pieChart?.resize()
   lineChart?.resize()

@@ -205,9 +205,15 @@ const formData = reactive<FormState>({
   category: '',
 })
 
-// --- 方法 ---
+// ===== 方法定义 =====
 
-// 1. 上传前检查
+/**
+ * 上传前校验
+ *
+ * 检查文件类型是否为支持的格式 (PDF 或图片)
+ * @param rawFile - 原始文件对象
+ * @returns true 允许上传, false 拒绝上传
+ */
 const beforeUpload = (rawFile: File) => {
   const isPDF = rawFile.type === 'application/pdf'
   const isImage = rawFile.type.startsWith('image/')
@@ -219,11 +225,23 @@ const beforeUpload = (rawFile: File) => {
   return true
 }
 
-// 2. 自定义上传逻辑 (核心)
+/**
+ * 自定义上传逻辑 (核心方法)
+ *
+ * 流程:
+ * 1. 创建本地预览 URL
+ * 2. 将文件上传到后端 AI OCR 接口
+ * 3. 将 AI 识别结果填充到表单
+ *
+ * @param options - Element Plus Upload 组件传入的配置对象
+ */
 const customUpload = async (options: any) => {
   const file = options.file
+
+  // 创建本地预览 URL (Blob URL)
   fileUrl.value = URL.createObjectURL(file)
 
+  // 设置文件类型用于渲染不同的预览组件
   if (file.type === 'application/pdf') {
     fileType.value = 'pdf'
   } else {
@@ -232,13 +250,16 @@ const customUpload = async (options: any) => {
 
   loading.value = true
 
+  // 构建 FormData 用于文件上传
   const data = new FormData()
   data.append('file', file)
 
   try {
+    // 调用后端 AI OCR 识别接口
     const res = await axios.post('http://localhost:8080/api/doc/upload', data)
     const aiResult = res.data
 
+    // 将 AI 识别结果填充到表单
     formData.merchantName = aiResult.merchantName || ''
     formData.itemName = aiResult.itemName || ''
     formData.date = aiResult.date || ''
@@ -255,6 +276,10 @@ const customUpload = async (options: any) => {
   }
 }
 
+/**
+ * 重置表单
+ * 清空所有表单数据和预览状态
+ */
 const resetForm = () => {
   fileUrl.value = ''
   fileType.value = ''
@@ -266,7 +291,13 @@ const resetForm = () => {
   formData.category = ''
 }
 
+/**
+ * 保存归档
+ *
+ * 将表单数据提交到后端保存到数据库
+ */
 const saveDoc = async () => {
+  // 表单验证
   if (!formData.merchantName || formData.amount <= 0) {
     ElMessage.warning('请确保商户名称和金额有效')
     return
@@ -274,8 +305,10 @@ const saveDoc = async () => {
 
   loading.value = true
   try {
+    // 调用保存接口
     await axios.post('http://localhost:8080/api/doc/save', formData)
     ElMessage.success('归档成功！已保存至数据库')
+    // 保存成功后重置表单，方便继续上传
     resetForm()
   } catch (error) {
     console.error(error)

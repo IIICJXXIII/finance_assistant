@@ -39,7 +39,18 @@
         </el-menu-item>
 
         <el-menu-item index="/budget">
-          <el-icon><Wallet /> </el-icon> <template #title>预算中心 (Budget)</template>
+          <el-icon><Wallet /></el-icon>
+          <template #title>预算中心 (Budget)</template>
+        </el-menu-item>
+
+        <el-menu-item index="/calendar">
+          <el-icon><Calendar /></el-icon>
+          <template #title>财务日历 (Calendar)</template>
+        </el-menu-item>
+
+        <el-menu-item index="/settings">
+          <el-icon><Setting /></el-icon>
+          <template #title>系统设置 (Settings)</template>
         </el-menu-item>
       </el-menu>
 
@@ -66,11 +77,11 @@
             <span class="username">{{
               currentUser.nickname || currentUser.username || '未登录'
             }}</span>
-            <el-icon class="el-icon--right"><arrow-down /></el-icon>
+            <el-icon class="el-icon--right"><ArrowDown /></el-icon>
           </div>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="profile" disabled>个人中心</el-dropdown-item>
+              <el-dropdown-item command="profile">个人中心</el-dropdown-item>
               <el-dropdown-item divided command="logout" style="color: #f56c6c"
                 >退出登录</el-dropdown-item
               >
@@ -91,37 +102,55 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * App.vue - 应用根组件
+ *
+ * 功能概述:
+ * 1. 定义全局布局结构 (侧边栏 + 主内容区)
+ * 2. 实现导航菜单和路由切换
+ * 3. 管理用户登录状态和退出登录功能
+ */
+
+// --- Vue 核心 API 导入 ---
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router' // 引入 useRouter
+import { useRoute, useRouter } from 'vue-router'
 import {
   DocumentChecked,
   UploadFilled,
   List,
   PieChart,
+  ChatDotRound,
+  Wallet,
   ArrowDown,
+  Calendar,
+  Setting,
   Expand,
   Fold,
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
-// Register icons for dynamic component usage
-const Expand_ = Expand
-const Fold_ = Fold
-void Expand_
-void Fold_
-
+// --- 类型定义 ---
+/** 用户信息接口 */
 interface UserInfo {
-  id?: number
-  username?: string
-  nickname?: string
+  id?: number // 用户 ID
+  username?: string // 用户名 (登录账号)
+  nickname?: string // 昵称 (显示名称)
 }
 
-const route = useRoute()
-const router = useRouter()
-const isCollapse = ref(false)
-const currentUser = ref<UserInfo>({}) // 存储用户信息
+// --- 路由实例 ---
+const route = useRoute() // 当前路由信息 (响应式)
+const router = useRouter() // 路由导航实例
 
-// 从 LocalStorage 读取用户信息的函数
+// --- 响应式状态 ---
+const isCollapse = ref(false) // 侧边栏是否折叠
+const currentUser = ref<UserInfo>({}) // 当前登录用户信息
+
+/**
+ * 从 LocalStorage 加载用户信息
+ *
+ * 尝试解析存储的 JSON 格式用户数据
+ * 如果解析失败则重置为空对象
+ */
 const loadUserInfo = () => {
   const userStr = localStorage.getItem('user')
   if (userStr) {
@@ -136,12 +165,20 @@ const loadUserInfo = () => {
   }
 }
 
-// 1. 初始化时读取用户信息
+/**
+ * 组件挂载完成时执行
+ * 初始化加载用户信息
+ */
 onMounted(() => {
   loadUserInfo()
 })
 
-// 2. 监听路由变化，重新加载用户信息（登录后跳转时触发）
+/**
+ * 监听路由变化
+ *
+ * 作用: 解决登录成功后跳转时用户名不更新的问题
+ * 每次路由变化时重新加载用户信息
+ */
 watch(
   () => route.path,
   () => {
@@ -149,40 +186,62 @@ watch(
   },
 )
 
+/**
+ * 计算属性: 当前激活的菜单项
+ * 根据当前路由路径高亮对应的侧边栏菜单
+ */
 const activeMenu = computed(() => route.path)
 
+/**
+ * 计算属性: 当前页面标题
+ * 根据路由路径返回对应的中文标题，用于面包屑导航显示
+ */
 const currentTitle = computed(() => {
   if (route.path === '/upload') return '智能归档助手'
   if (route.path === '/list') return '历史归档列表'
   if (route.path === '/stats') return '数据报表'
+  if (route.path === '/chat') return 'AI 财务顾问'
+  if (route.path === '/budget') return '预算控制中心'
+  if (route.path === '/profile') return '个人中心'
   return 'SmartDoc'
 })
 
+/**
+ * 切换侧边栏折叠状态
+ */
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
 }
 
-// 2. 处理下拉菜单点击事件
+/**
+ * 处理用户下拉菜单命令
+ *
+ * @param command - 菜单命令标识 ('logout' | 'profile')
+ */
 const handleCommand = (command: string) => {
   if (command === 'logout') {
+    // 退出登录: 弹出确认框
     ElMessageBox.confirm('确定要退出登录吗？', '提示', {
       confirmButtonText: '退出',
       cancelButtonText: '取消',
       type: 'warning',
     }).then(() => {
-      // 执行登出逻辑
+      // 清除本地存储的登录信息
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       ElMessage.success('已安全退出')
-      // 跳转回登录页
+      // 跳转到登录页
       router.push('/login')
     })
+  } else if (command === 'profile') {
+    // 跳转到个人中心页面
+    router.push('/profile')
   }
 }
 </script>
 
 <style>
-/* CSS 部分保持不变 */
+/* 全局样式 */
 html,
 body {
   margin: 0;
@@ -199,7 +258,6 @@ body {
 </style>
 
 <style scoped>
-/* 布局样式保持不变 */
 .app-layout {
   display: flex;
   width: 100vw;
@@ -207,6 +265,8 @@ body {
   background-color: #f0f2f5;
   overflow: hidden;
 }
+
+/* 侧边栏 */
 .sidebar {
   background-color: #001529;
   height: 100%;
@@ -275,7 +335,6 @@ body {
   flex-shrink: 0;
   z-index: 9;
 }
-
 .crumb-label {
   color: #909399;
   font-size: 14px;
@@ -286,7 +345,6 @@ body {
   color: #303133;
 }
 
-/* 用户信息区域样式优化 */
 .user-info {
   display: flex;
   align-items: center;
@@ -318,7 +376,7 @@ body {
   scroll-behavior: smooth;
 }
 
-/* 动画 */
+/* 页面切换动画 */
 .fade-logo-enter-active,
 .fade-logo-leave-active {
   transition: opacity 0.2s;

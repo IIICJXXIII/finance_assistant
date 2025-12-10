@@ -85,45 +85,74 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * ChatAssistant.vue - AI 财务顾问聊天页面
+ *
+ * 功能概述:
+ * 1. 基于 WebSocket 实现实时双向通信
+ * 2. 支持多会话管理 (新建/切换/历史记录)
+ * 3. 集成 DeepSeek-V3 大语言模型回答财务问题
+ *
+ * 技术要点:
+ * - WebSocket: 实现实时消息推送，无需轮询
+ * - UUID: 生成唯一会话ID
+ * - 历史记录: 从后端加载并持久化
+ */
+
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, ChatDotSquare, ChatLineRound } from '@element-plus/icons-vue'
 import axios from 'axios'
-import { v4 as uuidv4 } from 'uuid' // 需要安装: npm install uuid @types/uuid
+import { v4 as uuidv4 } from 'uuid' // UUID 生成库
 
+// --- 类型定义 ---
+/** 消息对象接口 */
 interface Message {
-  role: 'user' | 'ai'
-  content: string
+  role: 'user' | 'ai' // 消息角色: 用户或 AI
+  content: string // 消息内容
 }
 
-// 状态
-const isConnected = ref(false)
-const isThinking = ref(false)
-const inputContent = ref('')
-const messages = ref<Message[]>([])
-const sessionList = ref<string[]>([])
-const currentSessionId = ref('')
-const msgListRef = ref<HTMLElement | null>(null)
+// ===== 响应式状态 =====
+const isConnected = ref(false) // WebSocket 连接状态
+const isThinking = ref(false) // AI 思考中状态
+const inputContent = ref('') // 输入框内容
+const messages = ref<Message[]>([]) // 当前会话的消息列表
+const sessionList = ref<string[]>([]) // 所有会话 ID 列表
+const currentSessionId = ref('') // 当前活动会话 ID
+const msgListRef = ref<HTMLElement | null>(null) // 消息列表 DOM 引用 (用于滚动)
+
+// WebSocket 实例
 let socket: WebSocket | null = null
 
+// ===== 生命周期 =====
+
+/** 组件挂载时初始化 */
 onMounted(async () => {
+  // 获取历史会话列表
   await fetchSessions()
-  // 如果没有会话，创建一个新的；如果有，默认选中第一个
+
+  // 根据是否有历史会话决定操作
   if (sessionList.value.length > 0) {
+    // 有历史会话: 默认选中第一个
     switchSession(sessionList.value[0])
   } else {
+    // 无历史会话: 创建新会话
     startNewChat()
   }
+
+  // 初始化 WebSocket 连接
   initWebSocket()
 })
 
+/** 组件卸载时清理 */
 onUnmounted(() => {
+  // 关闭 WebSocket 连接，防止内存泄漏
   if (socket) socket.close()
 })
 
-// --- 1. 会话管理逻辑 ---
+// ===== 会话管理逻辑 =====
 
-// 获取会话列表
+/** 获取会话列表 */
 const fetchSessions = async () => {
   try {
     const res = await axios.get('http://localhost:8080/api/user/chat/sessions')
@@ -135,22 +164,28 @@ const fetchSessions = async () => {
   }
 }
 
-// 开启新对话
+/**
+ * 开启新对话
+ * 生成新的会话 ID 并清空当前消息
+ */
 const startNewChat = () => {
-  // 生成一个新的 UUID 作为会话 ID
+  // 生成唯一 UUID 作为会话标识
   const newId = uuidv4()
   currentSessionId.value = newId
   messages.value = [] // 清空当前屏显示
 
-  // 把新会话加到列表顶部
+  // 将新会话添加到列表顶部
   sessionList.value.unshift(newId)
 }
 
-// 切换会话
+/**
+ * 切换会话
+ * 加载指定会话的历史记录
+ */
 const switchSession = async (sessionId: string) => {
   currentSessionId.value = sessionId
   try {
-    // 加载该会话的历史记录
+    // 从后端加载该会话的历史消息
     const res = await axios.get(
       `http://localhost:8080/api/user/chat/history?sessionId=${sessionId}`,
     )
@@ -163,57 +198,80 @@ const switchSession = async (sessionId: string) => {
   }
 }
 
-// 简单的格式化显示 (比如截取 ID 前几位，实际可以存标题)
+/**
+ * 格式化会话名称
+ * 截取 ID 前 8 位显示
+ */
 const formatSessionName = (id: string) => {
   return `会话 ${id.substring(0, 8)}...`
 }
 
-// --- 2. WebSocket 逻辑 ---
+// ===== WebSocket 通信逻辑 =====
 
+/**
+ * 初始化 WebSocket 连接
+ * 使用 Token 进行身份验证
+ */
 const initWebSocket = () => {
   const token = localStorage.getItem('token')
-  if (!token) return
+  if (!token) return // 未登录则不建立连接
+
+  // 创建 WebSocket 连接，URL 中带上 Token 进行验证
   socket = new WebSocket(`ws://localhost:8080/ws/chat/${token}`)
 
+  // 连接成功回调
   socket.onopen = () => {
     isConnected.value = true
   }
 
+  // 接收消息回调 (AI 回复)
   socket.onmessage = (event) => {
     isThinking.value = false
+    // 将 AI 回复添加到消息列表
     messages.value.push({ role: 'ai', content: event.data })
     scrollToBottom()
   }
 
+  // 连接关闭回调
   socket.onclose = () => {
     isConnected.value = false
   }
 }
 
+/**
+ * 发送消息
+ * 将用户输入通过 WebSocket 发送到后端
+ */
 const sendMsg = () => {
   const text = inputContent.value.trim()
   if (!text) return
 
+  // 检查 WebSocket 连接状态
   if (!socket || socket.readyState !== WebSocket.OPEN) {
     ElMessage.error('连接断开')
     return
   }
 
-  // 1. 界面显示
+  // 1. 界面立即显示用户消息
   messages.value.push({ role: 'user', content: text })
   scrollToBottom()
 
-  // 2. 发送 JSON (带上 SessionId)
+  // 2. 构建发送负载 (JSON 格式，包含会话 ID)
   const payload = JSON.stringify({
     content: text,
     sessionId: currentSessionId.value,
   })
 
+  // 3. 设置思考状态并发送
   isThinking.value = true
   socket.send(payload)
-  inputContent.value = ''
+  inputContent.value = '' // 清空输入框
 }
 
+/**
+ * 滚动到底部
+ * 用于新消息时自动滚动到最新内容
+ */
 const scrollToBottom = () => {
   nextTick(() => {
     if (msgListRef.value) {

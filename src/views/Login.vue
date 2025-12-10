@@ -42,39 +42,69 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Login.vue - 用户登录页面
+ *
+ * 功能概述:
+ * 1. 提供用户名密码输入表单
+ * 2. 调用后端登录接口验证身份
+ * 3. 登录成功后存储 Token 并跳转到主页
+ */
+
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { DocumentChecked, User, Lock } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
 
-const router = useRouter()
-const loading = ref(false)
+// --- 路由和状态 ---
+const router = useRouter() // 路由导航实例
+const loading = ref(false) // 登录按钮加载状态
+
+// 登录表单数据 (响应式对象)
 const loginForm = reactive({ username: '', password: '' })
 
+/**
+ * 处理登录请求
+ *
+ * 流程:
+ * 1. 表单验证 - 检查用户名密码是否填写
+ * 2. 发送请求 - 调用后端登录 API
+ * 3. 处理响应 - 存储 Token 并跳转
+ */
 const handleLogin = async () => {
+  // 表单验证: 账号密码不能为空
   if (!loginForm.username || !loginForm.password) {
     return ElMessage.warning('请输入账号和密码')
   }
 
   loading.value = true
   try {
+    // 发送登录请求到后端 API
     const res = await axios.post('http://localhost:8080/api/user/login', loginForm)
+
     if (res.data.code === 200) {
+      // 登录成功
       ElMessage.success('登录成功')
-      // 核心：把 Token 和用户信息存入 LocalStorage
+
+      // 核心: 将 Token 和用户信息存入 LocalStorage
+      // Token 用于后续请求的身份验证
       localStorage.setItem('token', res.data.token)
+      // 用户信息用于界面显示
       localStorage.setItem('user', JSON.stringify(res.data.user))
 
-      // 跳转到首页
+      // 跳转到上传页面 (主页)
       router.push('/upload')
     } else {
+      // 登录失败: 显示后端返回的错误信息
       ElMessage.error(res.data.msg || '登录失败')
     }
   } catch (error) {
+    // 网络错误或服务器异常
     console.error(error)
     ElMessage.error('服务器连接失败')
   } finally {
+    // 无论成功失败，都关闭加载状态
     loading.value = false
   }
 }
