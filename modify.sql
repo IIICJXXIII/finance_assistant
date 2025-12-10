@@ -41,3 +41,16 @@ CREATE TABLE `sys_budget` (
 USE `smartdoc`;
 ALTER TABLE `invoice_record` ADD COLUMN `is_anomaly` TINYINT(1) DEFAULT 0 COMMENT '是否异常(0否 1是)';
 
+USE `smartdoc`;
+
+CREATE TABLE `sys_operation_log` (
+                                     `id` bigint(20) NOT NULL AUTO_INCREMENT,
+                                     `user_id` bigint(20) NOT NULL,
+                                     `operation` varchar(50) NOT NULL COMMENT '操作类型(如: 删除发票)',
+                                     `detail` varchar(255) DEFAULT NULL COMMENT '详情(如: 发票ID:105)',
+                                     `ip_address` varchar(50) DEFAULT NULL COMMENT '操作IP',
+                                     `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+                                     PRIMARY KEY (`id`),
+                                     INDEX `idx_user_op` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作审计日志';
+
