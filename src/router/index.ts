@@ -11,7 +11,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 // --- 页面组件导入 ---
 // SmartUploader 为首屏核心页面，采用静态导入以确保快速加载
-import SmartUploader from '../views/SmartUploader.vue'
+import SmartUploader from '../views/StatsDashboard.vue'
 
 // 其他页面采用动态导入 (懒加载)，只有在访问时才加载，优化初始加载速度
 const DocList = () => import('../views/DocList.vue') // 归档记录列表页
@@ -22,7 +22,11 @@ const ChatAssistant = () => import('../views/ChatAssistant.vue') // AI 财务顾
 const BudgetCenter = () => import('../views/BudgetCenter.vue') // 预算控制中心页
 const UserProfile = () => import('../views/UserProfile.vue') // 个人中心页
 const CalendarView = () => import('../views/FinanceCalendar.vue') // 财务日历页
-const SystemSettings = () => import('../views/SystemSettings.vue')
+const SystemSettings = () => import('../views/SystemSettings.vue') // 系统设置页
+const KnowledgeGraph = () => import('../views/KnowledgeGraph.vue') // 知识图谱页
+const RecycleBin = () => import('../views/RecycleBin.vue') // 回收站页
+const upload = () => import('../views/SmartUploader.vue') // 智能归档页
+const ApprovalCenter = () => import('../views/ApprovalCenter.vue') // 审批中心页
 
 /**
  * 创建路由实例
@@ -46,7 +50,11 @@ const router = createRouter({
     { path: '/budget', name: 'budget', component: BudgetCenter }, // 预算管理页
     { path: '/profile', name: 'profile', component: UserProfile }, // 个人中心页
     { path: '/calendar', name: 'calendar', component: CalendarView }, // 财务日历页
-    { path: '/settings', name: 'settings', component: SystemSettings },
+    { path: '/settings', name: 'settings', component: SystemSettings }, // 系统设置页
+    { path: '/graph', name: 'graph', component: KnowledgeGraph }, // 知识图谱页
+    { path: '/recycle', name: 'recycle', component: RecycleBin }, // 回收站页
+    { path: '/upload', name: 'upload', component: upload }, // 智能归档页
+    { path: '/approval', name: 'approval', component: ApprovalCenter }, // 审批中心页
   ],
 })
 

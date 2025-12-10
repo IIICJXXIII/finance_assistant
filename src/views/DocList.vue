@@ -84,7 +84,7 @@
               </template>
             </el-table-column>
 
-            <el-table-column prop="amount" label="金额" width="130" sortable align="right">
+            <el-table-column prop="amount" label="金额" width="120" sortable align="right">
               <template #default="{ row }">
                 <div
                   style="display: flex; align-items: center; justify-content: flex-end; gap: 6px"
@@ -106,16 +106,42 @@
               </template>
             </el-table-column>
 
+            <el-table-column label="审批状态" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag v-if="row.status === 0" type="info">草稿</el-tag>
+                <el-tag v-else-if="row.status === 1" type="warning">审核中</el-tag>
+                <el-tag v-else-if="row.status === 2" type="success">已通过</el-tag>
+                <el-tooltip
+                  v-else-if="row.status === 3"
+                  :content="'驳回原因: ' + (row.auditRemark || '无')"
+                  placement="top"
+                >
+                  <el-tag type="danger" style="cursor: help">已驳回</el-tag>
+                </el-tooltip>
+              </template>
+            </el-table-column>
+
             <el-table-column
               prop="invoiceCode"
               label="发票号码"
-              width="130"
+              width="120"
               show-overflow-tooltip
               align="center"
             />
 
-            <el-table-column label="操作" width="180" fixed="right" align="center">
+            <el-table-column label="操作" width="220" fixed="right" align="center">
               <template #default="scope">
+                <el-button
+                  v-if="scope.row.status === 0 || scope.row.status === 3"
+                  size="small"
+                  link
+                  type="success"
+                  icon="Top"
+                  @click="handleSubmit(scope.row.id)"
+                >
+                  提交
+                </el-button>
+
                 <el-button
                   size="small"
                   link
@@ -125,12 +151,14 @@
                 >
                   详情
                 </el-button>
+
                 <el-button
                   size="small"
                   link
                   type="primary"
                   icon="Edit"
                   @click="handleEdit(scope.row)"
+                  :disabled="scope.row.status === 1 || scope.row.status === 2"
                 >
                   修改
                 </el-button>
@@ -140,6 +168,7 @@
                   type="danger"
                   icon="Delete"
                   @click="handleDelete(scope.row)"
+                  :disabled="scope.row.status === 1 || scope.row.status === 2"
                 >
                   删除
                 </el-button>
@@ -166,14 +195,30 @@
     <el-dialog v-model="dialogVisible" title="🧾 票据详情" width="450px" align-center>
       <div v-if="currentRow" class="detail-content">
         <el-alert
+          v-if="currentRow.status === 3"
+          :title="'申请已被驳回：' + (currentRow.auditRemark || '无原因')"
+          type="error"
+          show-icon
+          :closable="false"
+          style="margin-bottom: 15px"
+        />
+        <el-alert
           v-if="currentRow.isAnomaly === 1"
           title="风险预警：金额异常"
-          type="error"
+          type="warning"
           description="该发票金额远超同类目平均水平。"
           show-icon
           :closable="false"
           style="margin-bottom: 15px"
         />
+
+        <div class="detail-item">
+          <label>审批状态：</label>
+          <el-tag v-if="currentRow.status === 0" type="info">草稿</el-tag>
+          <el-tag v-else-if="currentRow.status === 1" type="warning">审核中</el-tag>
+          <el-tag v-else-if="currentRow.status === 2" type="success">已通过</el-tag>
+          <el-tag v-else-if="currentRow.status === 3" type="danger">已驳回</el-tag>
+        </div>
         <div class="detail-item">
           <label>商户名称：</label><span>{{ currentRow.merchantName }}</span>
         </div>
@@ -256,34 +301,21 @@
 </template>
 
 <script setup lang="ts">
-/**
- * DocList.vue - 归档记录列表页面
- *
- * 功能概述:
- * 1. 展示所有已归档的票据记录
- * 2. 支持按关键词和分类搜索筛选
- * 3. 提供查看详情、修改、删除操作
- * 4. 支持分页浏览大量数据
- * 5. 显示 AI 异常检测预警标记
- */
-
 import { ref, reactive, onMounted, computed } from 'vue'
-import { Search, Plus, Refresh, Warning, View, Edit, Delete } from '@element-plus/icons-vue'
+import { Search, Plus, Refresh, Warning, View, Edit, Delete, Top } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
-// ===== 状态定义 =====
-const loading = ref(false) // 加载状态
-const allTableData = ref<any[]>([]) // 全部数据 (从后端获取)
-const displayData = ref<any[]>([]) // 展示数据 (筛选后)
-const dialogVisible = ref(false) // 详情弹窗显示状态
-const currentRow = ref<any>(null) // 当前选中的行数据
+// --- 状态定义 ---
+const loading = ref(false)
+const allTableData = ref<any[]>([])
+const displayData = ref<any[]>([])
+const dialogVisible = ref(false)
+const currentRow = ref<any>(null)
 
-// --- 修改功能相关状态 ---
-const editDialogVisible = ref(false) // 修改弹窗显示状态
-const editLoading = ref(false) // 修改提交加载状态
-
-// 修改表单数据
+// 修改相关
+const editDialogVisible = ref(false)
+const editLoading = ref(false)
 const editForm = reactive({
   id: 0,
   merchantName: '',
@@ -292,42 +324,33 @@ const editForm = reactive({
   amount: 0,
   date: '',
   invoiceCode: '',
-  // 保留其他不需要修改但需要回传的字段
   userId: 0,
   createTime: '',
+  status: 0, // 保留原状态
+  auditRemark: '',
 })
 
-// --- 分页状态 ---
-const currentPage = ref(1) // 当前页码
-const pageSize = ref(10) // 每页条数
+// 分页状态
+const currentPage = ref(1)
+const pageSize = ref(10)
 
-// 搜索表单数据
 const searchForm = reactive({ keyword: '', category: '' })
 
-// ===== 计算属性 =====
-
-/** 总记录数 */
+// --- 计算属性 ---
 const total = computed(() => displayData.value.length)
-
-/** 当前页显示的数据 (前端分页) */
 const pagedTableData = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
   const end = start + pageSize.value
   return displayData.value.slice(start, end)
 })
 
-// ===== 方法定义 =====
+// --- 方法 ---
 
-/**
- * 获取归档列表数据
- * 从后端 API 获取所有归档记录
- */
 const fetchList = async () => {
   loading.value = true
   try {
     const res = await axios.get('http://localhost:8080/api/doc/list')
     allTableData.value = res.data
-    // 获取数据后触发搜索筛选
     handleSearch()
   } catch (error) {
     ElMessage.error('无法连接到数据库')
@@ -336,72 +359,65 @@ const fetchList = async () => {
   }
 }
 
-/** 组件挂载时获取数据 */
 onMounted(() => {
   fetchList()
 })
 
-/**
- * 搜索筛选
- * 根据关键词和分类过滤数据
- */
+// 搜索
 const handleSearch = () => {
   displayData.value = allTableData.value.filter((item) => {
-    // 关键词匹配: 商户名称或项目名称包含搜索词
     const matchName =
       !searchForm.keyword ||
       (item.merchantName && item.merchantName.includes(searchForm.keyword)) ||
       (item.itemName && item.itemName.includes(searchForm.keyword))
-    // 分类匹配
     const matchCat = !searchForm.category || item.category === searchForm.category
     return matchName && matchCat
   })
-  // 搜索后重置到第一页
   currentPage.value = 1
 }
 
-/** 重置搜索条件 */
 const resetSearch = () => {
   searchForm.keyword = ''
   searchForm.category = ''
   handleSearch()
 }
 
-// --- 分页事件处理 ---
-
-/** 每页条数变化 */
+// 分页
 const handleSizeChange = (val: number) => {
   pageSize.value = val
-  currentPage.value = 1 // 重置到第一页
+  currentPage.value = 1
 }
-
-/** 当前页变化 */
 const handleCurrentChange = (val: number) => {
   currentPage.value = val
 }
 
-// --- 操作方法 ---
-
-/** 查看详情 */
+// 详情
 const viewDetail = (row: any) => {
   currentRow.value = row
   dialogVisible.value = true
 }
 
-/**
- * 点击修改按钮
- * 将当前行数据复制到编辑表单
- */
+// 🔥 核心：提交审核
+const handleSubmit = async (id: number) => {
+  try {
+    const res = await axios.post(`http://localhost:8080/api/audit/submit/${id}`)
+    if (res.data.code === 200) {
+      ElMessage.success('已提交申请')
+      fetchList()
+    } else {
+      ElMessage.error(res.data.msg)
+    }
+  } catch (e) {
+    ElMessage.error('提交失败')
+  }
+}
+
+// 修改按钮
 const handleEdit = (row: any) => {
-  // 使用 Object.assign 浅拷贝，防止修改表单时直接影响表格显示
   Object.assign(editForm, row)
   editDialogVisible.value = true
 }
 
-/**
- * 提交修改
- * 调用后端保存接口 (JPA 的 save 方法: 有ID就是更新，无ID就是新增)
- */
 const submitEdit = async () => {
   editLoading.value = true
   try {
@@ -409,7 +425,7 @@ const submitEdit = async () => {
     if (res.data === 'success') {
       ElMessage.success('修改成功')
       editDialogVisible.value = false
-      fetchList() // 刷新列表
+      fetchList()
     } else {
       ElMessage.error('修改失败：' + res.data)
     }
@@ -420,10 +436,7 @@ const submitEdit = async () => {
   }
 }
 
-/**
- * 删除记录
- * 弹出确认框后调用删除接口
- */
+// 删除
 const handleDelete = (row: any) => {
   ElMessageBox.confirm(`确定删除【${row.merchantName}】的记录吗？`, '警告', {
     confirmButtonText: '删除',
@@ -433,17 +446,13 @@ const handleDelete = (row: any) => {
     try {
       await axios.delete(`http://localhost:8080/api/doc/delete/${row.id}`)
       ElMessage.success('删除成功')
-      fetchList() // 刷新列表
+      fetchList()
     } catch (error) {
       ElMessage.error('删除失败')
     }
   })
 }
 
-/**
- * 获取分类标签样式
- * 根据分类名称返回对应的 Element Plus Tag 类型
- */
 const getCategoryType = (cat: string) => {
   if (cat?.includes('餐饮')) return 'warning'
   if (cat?.includes('交通')) return 'success'

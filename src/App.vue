@@ -18,6 +18,11 @@
         :collapse="isCollapse"
         :collapse-transition="false"
       >
+        <el-menu-item index="/stats">
+          <el-icon><PieChart /></el-icon>
+          <template #title>数据报表 (Stats)</template>
+        </el-menu-item>
+
         <el-menu-item index="/upload">
           <el-icon><UploadFilled /></el-icon>
           <template #title>智能归档 (Upload)</template>
@@ -26,11 +31,6 @@
         <el-menu-item index="/list">
           <el-icon><List /></el-icon>
           <template #title>归档记录 (List)</template>
-        </el-menu-item>
-
-        <el-menu-item index="/stats">
-          <el-icon><PieChart /></el-icon>
-          <template #title>数据报表 (Stats)</template>
         </el-menu-item>
 
         <el-menu-item index="/chat">
@@ -46,6 +46,21 @@
         <el-menu-item index="/calendar">
           <el-icon><Calendar /></el-icon>
           <template #title>财务日历 (Calendar)</template>
+        </el-menu-item>
+
+        <el-menu-item index="/graph">
+          <el-icon><Connection /></el-icon>
+          <template #title>消费图谱 (Graph)</template>
+        </el-menu-item>
+
+        <el-menu-item index="/recycle">
+          <el-icon><DocumentChecked /></el-icon>
+          <template #title>回收站 (Recycle Bin)</template>
+        </el-menu-item>
+
+        <el-menu-item index="/approval" v-if="currentUser.role === 'admin'">
+          <el-icon><Stamp /></el-icon>
+          <template #title>审批工作台 (Approval)</template>
         </el-menu-item>
 
         <el-menu-item index="/settings">
@@ -124,6 +139,8 @@ import {
   ArrowDown,
   Calendar,
   Setting,
+  Connection,
+  Stamp,
   Expand,
   Fold,
 } from '@element-plus/icons-vue'
@@ -135,6 +152,7 @@ interface UserInfo {
   id?: number // 用户 ID
   username?: string // 用户名 (登录账号)
   nickname?: string // 昵称 (显示名称)
+  role?: string // 用户角色 (如 'admin'、'user')
 }
 
 // --- 路由实例 ---
