@@ -9,6 +9,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import cn.hutool.poi.excel.ExcelUtil;
+import cn.hutool.poi.excel.ExcelWriter;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.HttpServletResponse;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 import java.util.List;
 
@@ -124,5 +130,50 @@ public class DocController {
             return UserController.tokenMap.get(token);
         }
         return null; // Token 无效或未登录
+    }
+
+    // 新增：导出 Excel 接口
+    @GetMapping("/export")
+    public void export(HttpServletResponse response, @RequestHeader("Authorization") String token) {
+        try {
+            User user = UserController.tokenMap.get(token);
+            if (user == null) return;
+
+            // 1. 查询该用户所有数据
+            List<InvoiceData> list = invoiceRepository.findByUserIdOrderByIdDesc(user.getId());
+
+            // 2. 使用 Hutool 创建 Excel Writer
+            ExcelWriter writer = ExcelUtil.getWriter(true);
+
+            // 3. 自定义标题别名 (否则导出的表头是英文列名)
+            writer.addHeaderAlias("id", "编号");
+            writer.addHeaderAlias("merchantName", "商户名称");
+            writer.addHeaderAlias("itemName", "项目名称");
+            writer.addHeaderAlias("amount", "金额");
+            writer.addHeaderAlias("date", "开票日期");
+            writer.addHeaderAlias("category", "分类");
+            writer.addHeaderAlias("invoiceCode", "发票号码");
+            writer.addHeaderAlias("createTime", "创建时间");
+
+            // 默认只导出这些列，忽略 userId 等内部字段
+            writer.setOnlyAlias(true);
+
+            // 4. 写出数据
+            writer.write(list, true);
+
+            // 5. 设置浏览器响应格式 (弹出下载框)
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8");
+            String fileName = URLEncoder.encode("发票归档报表", StandardCharsets.UTF_8);
+            response.setHeader("Content-Disposition", "attachment;filename=" + fileName + ".xlsx");
+
+            // 6. 写出流
+            ServletOutputStream out = response.getOutputStream();
+            writer.flush(out, true);
+            writer.close();
+            out.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

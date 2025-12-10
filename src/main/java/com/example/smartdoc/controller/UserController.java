@@ -109,4 +109,28 @@ public class UserController {
 
         return result;
     }
+
+    // 新增：更新用户信息
+    @PostMapping("/update")
+    public Map<String, Object> update(@RequestBody User user, @RequestHeader("Authorization") String token) {
+        User currentUser = tokenMap.get(token);
+        if (currentUser == null) return Map.of("code", 401);
+
+        // 从数据库重新查，确保安全
+        User dbUser = userRepository.findById(currentUser.getId()).orElse(null);
+        if (dbUser != null) {
+            // 更新非空字段
+            if (user.getNickname() != null) dbUser.setNickname(user.getNickname());
+            if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+                dbUser.setPassword(user.getPassword()); // 实际建议加密
+            }
+            userRepository.save(dbUser);
+
+            // 更新内存中的 tokenMap
+            tokenMap.put(token, dbUser);
+
+            return Map.of("code", 200, "msg", "更新成功", "user", dbUser);
+        }
+        return Map.of("code", 500, "msg", "用户不存在");
+    }
 }
