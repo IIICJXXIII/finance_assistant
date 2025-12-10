@@ -2,6 +2,9 @@
 
 基于 **Vue 3 + TypeScript + Vite + Element Plus** 构建的现代化财务票据管理前端应用。
 
+## 后端仓库
+https://github.com/IIICJXXIII/smart_doc_backend
+
 ---
 
 ## ✨ 技术栈
