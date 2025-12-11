@@ -5,7 +5,10 @@
         <div class="card-content">
           <div class="meta">
             <span class="label">累计归档金额</span>
-            <el-tag type="success" size="small">+12% 同比</el-tag>
+            <!-- 动态计算本月环比率 -->
+            <el-tag :type="monthOverMonthRate >= 0 ? 'success' : 'danger'" size="small">
+              {{ monthOverMonthRate >= 0 ? '+' : '' }}{{ monthOverMonthRate.toFixed(1) }}% 环比
+            </el-tag>
           </div>
           <div class="value">¥{{ totalAmount.toFixed(2) }}</div>
           <div class="footer">共计 {{ totalCount }} 张票据</div>
@@ -19,7 +22,8 @@
         <div class="card-content">
           <div class="meta">
             <span class="label">本月支出</span>
-            <el-tag type="warning" size="small">预算内</el-tag>
+            <!-- 根据预算限额动态判断状态 -->
+            <el-tag :type="budgetStatusType" size="small">{{ budgetStatusText }}</el-tag>
           </div>
           <div class="value">¥{{ currentMonthAmount.toFixed(2) }}</div>
           <div class="footer">最近更新: {{ lastUpdate }}</div>
@@ -109,6 +113,26 @@ const currentMonthAmount = computed(() => {
     .reduce((sum, item) => sum + item.amount, 0)
 })
 
+/** 上月支出金额 (用于计算环比率) */
+const lastMonthAmount = computed(() => {
+  // 计算上月日期字符串 (格式: YYYY-MM)
+  const now = new Date()
+  now.setMonth(now.getMonth() - 1)
+  const lastMonthStr = now.toISOString().slice(0, 7)
+  return allData.value
+    .filter((item) => item.date.startsWith(lastMonthStr))
+    .reduce((sum, item) => sum + item.amount, 0)
+})
+
+/** 本月环比率 (相比上月的增减百分比) */
+const monthOverMonthRate = computed(() => {
+  if (lastMonthAmount.value === 0) {
+    // 上月无数据，若本月有数据则显示 100%，无数据显示 0%
+    return currentMonthAmount.value > 0 ? 100 : 0
+  }
+  return ((currentMonthAmount.value - lastMonthAmount.value) / lastMonthAmount.value) * 100
+})
+
 /** 最后更新时间 */
 const lastUpdate = computed(() => {
   if (allData.value.length === 0) return '-'
@@ -118,6 +142,27 @@ const lastUpdate = computed(() => {
 // 最高频分类统计
 const topCategory = ref('-')
 const topCategoryPercent = ref('0')
+
+// 预算相关状态
+const monthlyBudget = ref(0) // 月度预算限额
+
+/** 预算状态文本 */
+const budgetStatusText = computed(() => {
+  if (monthlyBudget.value <= 0) return '未设预算'
+  const usage = (currentMonthAmount.value / monthlyBudget.value) * 100
+  if (usage >= 100) return '已超支'
+  if (usage >= 80) return '接近上限'
+  return '预算内'
+})
+
+/** 预算状态标签类型 */
+const budgetStatusType = computed(() => {
+  if (monthlyBudget.value <= 0) return 'info'
+  const usage = (currentMonthAmount.value / monthlyBudget.value) * 100
+  if (usage >= 100) return 'danger'
+  if (usage >= 80) return 'warning'
+  return 'success'
+})
 
 // ===== 核心逻辑 =====
 
@@ -143,7 +188,17 @@ const fetchData = async () => {
       if (pieChartRef.value) renderPieChart()
     })
 
-    // 2. 获取趋势预测数据 (后端线性回归计算)
+    // 2. 获取当前用户的预算设置
+    try {
+      const budgetRes = await axios.get('http://localhost:8080/api/budget/current')
+      if (budgetRes.data.code === 200 && budgetRes.data.data) {
+        monthlyBudget.value = budgetRes.data.data.monthlyLimit || 0
+      }
+    } catch (e) {
+      console.warn('预算数据获取失败，使用默认值', e)
+    }
+
+    // 3. 获取趋势预测数据 (后端线性回归计算)
     const trendRes = await axios.get('http://localhost:8080/api/stats/trend')
     if (trendRes.data.code === 200) {
       nextTick(() => {
@@ -236,7 +291,8 @@ const renderLineChart = (chartData: any) => {
   lineChart = echarts.init(lineChartRef.value)
 
   // 构造 X 轴: 历史月份 + 下月预测
-  const xData = [...chartData.months, '下月预测']
+  const nextLabel = chartData.nextMonthLabel || '下月预测'
+  const xData = [...chartData.months, nextLabel]
 
   // 构造 Y 轴数据
   // 1. 真实数据系列: 最后补一个 null，让实线在此断开
