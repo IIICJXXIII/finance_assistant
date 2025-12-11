@@ -30,7 +30,7 @@
         <el-form :model="loginForm" label-position="top" size="large">
           <!-- 账号输入框 -->
           <el-form-item label="账号">
-            <el-input v-model="loginForm.username" prefix-icon="User" placeholder="admin" />
+            <el-input ref="usernameInputRef" v-model="loginForm.username" prefix-icon="User" placeholder="admin" />
           </el-form-item>
 
           <!-- 密码输入框 -->
@@ -69,13 +69,19 @@
  */
 
 // --- 依赖导入 ---
-import { reactive, ref } from 'vue' // 导入 Vue 3 的响应式 API
+import { reactive, ref, onMounted } from 'vue' // 导入 Vue 3 的响应式 API
 import { useRouter } from 'vue-router' // 导入 Vue Router 的路由实例钩子
 import { DocumentChecked, User, Lock } from '@element-plus/icons-vue' // 导入 Element Plus 图标
 import { ElMessage } from 'element-plus' // 导入 Element Plus 的消息提示组件
 import axios from 'axios' // 导入 Axios 用于 HTTP 请求
 
 // --- 响应式状态定义 ---
+
+const usernameInputRef = ref<any>(null)
+
+onMounted(() => {
+  usernameInputRef.value?.focus()
+})
 
 const router = useRouter() // 获取路由实例，用于页面跳转
 const loading = ref(false) // 定义一个 ref 变量，控制登录按钮的加载状态，初始为 false
