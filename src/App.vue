@@ -53,6 +53,11 @@
           <template #title>消费图谱 (Graph)</template>
         </el-menu-item>
 
+        <el-menu-item index="/analysis">
+          <el-icon><DataAnalysis /></el-icon>
+          <template #title>聚类分析 (AI)</template>
+        </el-menu-item>
+
         <el-menu-item index="/recycle">
           <el-icon><DocumentChecked /></el-icon>
           <template #title>回收站 (Recycle Bin)</template>
@@ -141,6 +146,7 @@ import {
   Setting,
   Connection,
   Stamp,
+  DataAnalysis,
   Expand,
   Fold,
 } from '@element-plus/icons-vue'

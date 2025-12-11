@@ -27,6 +27,7 @@ const KnowledgeGraph = () => import('../views/KnowledgeGraph.vue') // 知识图�
 const RecycleBin = () => import('../views/RecycleBin.vue') // 回收站页
 const upload = () => import('../views/SmartUploader.vue') // 智能归档页
 const ApprovalCenter = () => import('../views/ApprovalCenter.vue') // 审批中心页
+const ConsumerAnalysis = () => import('../views/ConsumerAnalysis.vue') // 消费分析页
 
 /**
  * 创建路由实例
@@ -55,6 +56,7 @@ const router = createRouter({
     { path: '/recycle', name: 'recycle', component: RecycleBin }, // 回收站页
     { path: '/upload', name: 'upload', component: upload }, // 智能归档页
     { path: '/approval', name: 'approval', component: ApprovalCenter }, // 审批中心页
+    { path: '/analysis', name: 'analysis', component: ConsumerAnalysis }, // 消费分析页
   ],
 })
 
