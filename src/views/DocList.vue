@@ -158,7 +158,7 @@
                   type="primary"
                   icon="Edit"
                   @click="handleEdit(scope.row)"
-                  :disabled="scope.row.status === 1 || scope.row.status === 2"
+                  :disabled="!canEdit(scope.row.status)"
                 >
                   修改
                 </el-button>
@@ -343,6 +343,30 @@ const pagedTableData = computed(() => {
   const end = start + pageSize.value
   return displayData.value.slice(start, end)
 })
+
+/** 当前用户是否为管理员 */
+const isAdmin = computed(() => {
+  try {
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      const user = JSON.parse(userStr)
+      return user.role === 'admin'
+    }
+  } catch (e) {
+    console.warn('解析用户信息失败', e)
+  }
+  return false
+})
+
+/**
+ * 判断是否可以编辑记录
+ * - admin 用户: 始终可以编辑
+ * - 普通用户: 只有状态为“草稿(0)”或“已驳回(3)”时可编辑
+ */
+const canEdit = (status: number) => {
+  if (isAdmin.value) return true
+  return status === 0 || status === 3
+}
 
 // --- 方法 ---
 
