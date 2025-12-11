@@ -43,7 +43,7 @@
       >
         <div class="table-toolbar">
           <div class="left-panel">
-            <span class="title">🗂️ 归档记录</span>
+            <span class="title">🧾 归档记录</span>
             <el-tag type="info" size="small" effect="plain" style="margin-left: 8px">
               共 {{ total }} 条
             </el-tag>
@@ -54,140 +54,21 @@
         </div>
 
         <div class="table-content">
-          <el-table
-            :data="pagedTableData"
-            style="width: 100%; height: 100%"
-            v-loading="loading"
-            stripe
-            highlight-current-row
-          >
-            <el-table-column type="index" label="#" width="50" align="center" />
-            <el-table-column prop="date" label="开票日期" width="110" sortable />
-            <el-table-column
-              prop="itemName"
-              label="项目名称"
-              min-width="140"
-              show-overflow-tooltip
-            />
-            <el-table-column
-              prop="merchantName"
-              label="商户名称"
-              min-width="150"
-              show-overflow-tooltip
-            />
-
-            <el-table-column prop="category" label="分类" width="100" align="center">
-              <template #default="{ row }">
-                <el-tag :type="getCategoryType(row.category)" effect="light" size="small">
-                  {{ row.category }}
-                </el-tag>
-              </template>
-            </el-table-column>
-
-            <el-table-column prop="amount" label="金额" width="120" sortable align="right">
-              <template #default="{ row }">
-                <div
-                  style="display: flex; align-items: center; justify-content: flex-end; gap: 6px"
-                >
-                  <span
-                    style="font-weight: bold; font-family: monospace; font-size: 14px"
-                    :style="{ color: row.isAnomaly === 1 ? '#F56C6C' : '#303133' }"
-                  >
-                    ¥{{ Number(row.amount).toFixed(2) }}
-                  </span>
-                  <el-tooltip
-                    v-if="row.isAnomaly === 1"
-                    content="⚠️ 智能审计：该笔金额显著偏离您的历史消费习惯。"
-                    placement="top"
-                  >
-                    <el-icon color="#F56C6C" class="shaking-icon" :size="16"><Warning /></el-icon>
-                  </el-tooltip>
-                </div>
-              </template>
-            </el-table-column>
-
-            <el-table-column label="审批状态" width="100" align="center">
-              <template #default="{ row }">
-                <el-tag v-if="row.status === 0" type="info">草稿</el-tag>
-                <el-tag v-else-if="row.status === 1" type="warning">审核中</el-tag>
-                <el-tag v-else-if="row.status === 2" type="success">已通过</el-tag>
-                <el-tooltip
-                  v-else-if="row.status === 3"
-                  :content="'驳回原因: ' + (row.auditRemark || '无')"
-                  placement="top"
-                >
-                  <el-tag type="danger" style="cursor: help">已驳回</el-tag>
-                </el-tooltip>
-              </template>
-            </el-table-column>
-
-            <el-table-column
-              prop="invoiceCode"
-              label="发票号码"
-              width="120"
-              show-overflow-tooltip
-              align="center"
-            />
-
-            <el-table-column label="操作" width="220" fixed="right" align="center">
-              <template #default="scope">
-                <el-button
-                  v-if="scope.row.status === 0 || scope.row.status === 3"
-                  size="small"
-                  link
-                  type="success"
-                  icon="Top"
-                  @click="handleSubmit(scope.row.id)"
-                >
-                  提交
-                </el-button>
-
-                <el-button
-                  size="small"
-                  link
-                  type="primary"
-                  icon="View"
-                  @click="viewDetail(scope.row)"
-                >
-                  详情
-                </el-button>
-
-                <el-button
-                  size="small"
-                  link
-                  type="primary"
-                  icon="Edit"
-                  @click="handleEdit(scope.row)"
-                  :disabled="!canEdit(scope.row.status)"
-                >
-                  修改
-                </el-button>
-                <el-button
-                  size="small"
-                  link
-                  type="danger"
-                  icon="Delete"
-                  @click="handleDelete(scope.row)"
-                  :disabled="scope.row.status === 1 || scope.row.status === 2"
-                >
-                  删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-
-        <div class="pagination-footer">
-          <el-pagination
-            v-model:current-page="currentPage"
-            v-model:page-size="pageSize"
-            :page-sizes="[10, 20, 50, 100]"
-            layout="total, sizes, prev, pager, next, jumper"
-            :total="total"
-            @size-change="handleSizeChange"
-            @current-change="handleCurrentChange"
-            background
-          />
+          <el-auto-resizer>
+            <template #default="{ width, height }">
+              <el-table-v2
+                class="virtual-table"
+                :data="displayData"
+                :columns="columns"
+                :row-height="54"
+                :header-height="44"
+                :width="width"
+                :height="height"
+                row-key="id"
+                v-loading="loading"
+              />
+            </template>
+          </el-auto-resizer>
         </div>
       </el-card>
     </div>
@@ -233,7 +114,7 @@
         </div>
         <div class="detail-item">
           <label>归档金额：</label
-          ><span style="font-weight: bold">¥{{ Number(currentRow.amount).toFixed(2) }}</span>
+          ><span style="font-weight: bold">￥{{ Number(currentRow.amount).toFixed(2) }}</span>
         </div>
         <div class="detail-item">
           <label>智能分类：</label><el-tag>{{ currentRow.category }}</el-tag>
@@ -301,9 +182,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, h } from 'vue'
 import { Search, Plus, Refresh, Warning, View, Edit, Delete, Top } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElTag, ElTooltip, ElButton } from 'element-plus'
 import axios from 'axios'
 
 // --- 状态定义 ---
@@ -330,19 +211,10 @@ const editForm = reactive({
   auditRemark: '',
 })
 
-// 分页状态
-const currentPage = ref(1)
-const pageSize = ref(10)
-
 const searchForm = reactive({ keyword: '', category: '' })
 
 // --- 计算属性 ---
 const total = computed(() => displayData.value.length)
-const pagedTableData = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return displayData.value.slice(start, end)
-})
 
 /** 当前用户是否为管理员 */
 const isAdmin = computed(() => {
@@ -397,22 +269,12 @@ const handleSearch = () => {
     const matchCat = !searchForm.category || item.category === searchForm.category
     return matchName && matchCat
   })
-  currentPage.value = 1
 }
 
 const resetSearch = () => {
   searchForm.keyword = ''
   searchForm.category = ''
   handleSearch()
-}
-
-// 分页
-const handleSizeChange = (val: number) => {
-  pageSize.value = val
-  currentPage.value = 1
-}
-const handleCurrentChange = (val: number) => {
-  currentPage.value = val
 }
 
 // 详情
@@ -484,6 +346,194 @@ const getCategoryType = (cat: string) => {
   if (cat?.includes('通讯') || cat?.includes('电子')) return 'primary'
   return ''
 }
+
+// 虚拟表格列定义（Element Plus TableV2）
+const columns = computed(() => [
+  {
+    key: 'index',
+    title: '#',
+    width: 60,
+    fixed: 'left',
+    align: 'center',
+    cellRenderer: ({ rowIndex }: any) => rowIndex + 1,
+  },
+  {
+    key: 'date',
+    title: '开票日期',
+    width: 120,
+    align: 'center',
+    cellRenderer: ({ rowData }: any) => rowData.date || '-',
+  },
+  {
+    key: 'itemName',
+    title: '项目名称',
+    width: 180,
+    cellRenderer: ({ rowData }: any) =>
+      h(
+        'span',
+        { class: 'ellipsis-cell', title: rowData.itemName || '-' },
+        rowData.itemName || '-',
+      ),
+  },
+  {
+    key: 'merchantName',
+    title: '商户名称',
+    width: 200,
+    cellRenderer: ({ rowData }: any) =>
+      h(
+        'span',
+        { class: 'ellipsis-cell', title: rowData.merchantName || '-' },
+        rowData.merchantName || '-',
+      ),
+  },
+  {
+    key: 'category',
+    title: '分类',
+    width: 120,
+    align: 'center',
+    cellRenderer: ({ rowData }: any) =>
+      h(
+        ElTag,
+        { type: getCategoryType(rowData.category), size: 'small', effect: 'light' },
+        () => rowData.category || '-',
+      ),
+  },
+  {
+    key: 'amount',
+    title: '金额',
+    width: 160,
+    align: 'right',
+    cellRenderer: ({ rowData }: any) => {
+      const amountText = `￥${Number(rowData.amount || 0).toFixed(2)}`
+      const amountSpan = h(
+        'span',
+        {
+          class: 'amount-text',
+          style: rowData.isAnomaly === 1 ? 'color:#F56C6C' : 'color:#303133',
+        },
+        amountText,
+      )
+
+      const anomalyIcon =
+        rowData.isAnomaly === 1
+          ? h(
+              ElTooltip,
+              {
+                content: '⚠️ 智能审计：该笔金额显著偏离您的历史消费习惯。',
+                placement: 'top',
+              },
+              () => h(Warning, { style: 'color:#F56C6C', size: 16, class: 'shaking-icon' }),
+            )
+          : null
+
+      return h('div', { class: 'amount-cell' }, [amountSpan, anomalyIcon].filter(Boolean))
+    },
+  },
+  {
+    key: 'status',
+    title: '审批状态',
+    width: 140,
+    align: 'center',
+    cellRenderer: ({ rowData }: any) => {
+      const status = rowData.status
+      if (status === 0) return h(ElTag, { type: 'info' }, () => '草稿')
+      if (status === 1) return h(ElTag, { type: 'warning' }, () => '审核中')
+      if (status === 2) return h(ElTag, { type: 'success' }, () => '已通过')
+      if (status === 3) {
+        return h(
+          ElTooltip,
+          { content: `驳回原因: ${rowData.auditRemark || '无'}`, placement: 'top' },
+          () => h(ElTag, { type: 'danger', style: 'cursor: help' }, () => '已驳回'),
+        )
+      }
+      return h(ElTag, { type: 'info' }, () => '-')
+    },
+  },
+  {
+    key: 'invoiceCode',
+    title: '发票号码',
+    width: 160,
+    align: 'center',
+    cellRenderer: ({ rowData }: any) =>
+      h(
+        'span',
+        { class: 'ellipsis-cell', title: rowData.invoiceCode || '-' },
+        rowData.invoiceCode || '-',
+      ),
+  },
+  {
+    key: 'actions',
+    title: '操作',
+    width: 240,
+    align: 'center',
+    fixed: 'right',
+    cellRenderer: ({ rowData }: any) => {
+      const buttons = []
+
+      if (rowData.status === 0 || rowData.status === 3) {
+        buttons.push(
+          h(
+            ElButton,
+            {
+              link: true,
+              size: 'small',
+              type: 'success',
+              icon: Top,
+              onClick: () => handleSubmit(rowData.id),
+            },
+            () => '提交',
+          ),
+        )
+      }
+
+      buttons.push(
+        h(
+          ElButton,
+          {
+            link: true,
+            size: 'small',
+            type: 'primary',
+            icon: View,
+            onClick: () => viewDetail(rowData),
+          },
+          () => '详情',
+        ),
+      )
+
+      buttons.push(
+        h(
+          ElButton,
+          {
+            link: true,
+            size: 'small',
+            type: 'primary',
+            icon: Edit,
+            disabled: rowData.status === 1 || rowData.status === 2,
+            onClick: () => handleEdit(rowData),
+          },
+          () => '修改',
+        ),
+      )
+
+      buttons.push(
+        h(
+          ElButton,
+          {
+            link: true,
+            size: 'small',
+            type: 'danger',
+            icon: Delete,
+            disabled: rowData.status === 1 || rowData.status === 2,
+            onClick: () => handleDelete(rowData),
+          },
+          () => '删除',
+        ),
+      )
+
+      return h('div', { class: 'action-cell' }, buttons)
+    },
+  },
+])
 </script>
 
 <style scoped>
@@ -528,14 +578,6 @@ const getCategoryType = (cat: string) => {
   overflow: hidden;
   padding: 0 16px;
 }
-.pagination-footer {
-  padding: 12px 16px;
-  border-top: 1px solid #ebeef5;
-  display: flex;
-  justify-content: flex-end;
-  flex-shrink: 0;
-  background-color: #fff;
-}
 
 .detail-item {
   display: flex;
@@ -579,5 +621,28 @@ const getCategoryType = (cat: string) => {
   80% {
     transform: translateX(2px);
   }
+}
+
+.virtual-table {
+  height: 100%;
+}
+.ellipsis-cell {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.amount-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.action-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 </style>
