@@ -500,6 +500,7 @@ const columns = computed(() => [
         ),
       )
 
+      // 修改按钮: admin 始终可用，普通用户仅草稿/已驳回时可用
       buttons.push(
         h(
           ElButton,
@@ -508,13 +509,14 @@ const columns = computed(() => [
             size: 'small',
             type: 'primary',
             icon: Edit,
-            disabled: rowData.status === 1 || rowData.status === 2,
+            disabled: !canEdit(rowData.status),
             onClick: () => handleEdit(rowData),
           },
           () => '修改',
         ),
       )
 
+      // 删除按钮: admin 始终可用，普通用户仅草稿/已驳回时可用
       buttons.push(
         h(
           ElButton,
@@ -523,7 +525,7 @@ const columns = computed(() => [
             size: 'small',
             type: 'danger',
             icon: Delete,
-            disabled: rowData.status === 1 || rowData.status === 2,
+            disabled: !canEdit(rowData.status),
             onClick: () => handleDelete(rowData),
           },
           () => '删除',
