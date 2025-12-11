@@ -6,6 +6,9 @@ import com.example.smartdoc.repository.InvoiceRepository;
 import com.example.smartdoc.utils.LinearRegressionUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import com.example.smartdoc.service.DeepSeekService;
+import com.example.smartdoc.utils.KMeansUtil;
+import java.time.LocalDate;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,6 +22,9 @@ public class StatsController {
 
     @Autowired
     private InvoiceRepository invoiceRepository;
+
+    @Autowired
+    private DeepSeekService deepSeekService;
 
     @GetMapping("/trend")
     public Map<String, Object> getTrendPrediction(@RequestHeader("Authorization") String token) {
@@ -140,5 +146,83 @@ public class StatsController {
         result.put("links", links);
 
         return Map.of("code", 200, "data", result);
+    }
+
+    // 新增：K-Means 聚类分析接口
+    @GetMapping("/clustering")
+    public Map<String, Object> getClustering(@RequestHeader("Authorization") String token) {
+        User user = UserController.tokenMap.get(token);
+        if (user == null) return Map.of("code", 401);
+
+        List<InvoiceData> list = invoiceRepository.findByUserIdOrderByIdDesc(user.getId());
+
+        // 1. 数据预处理：转为二维点
+        // X轴：每月的几号 (1-31)，反映时间习惯
+        // Y轴：金额，反映消费水平
+        List<KMeansUtil.Point> points = new ArrayList<>();
+        for (InvoiceData item : list) {
+            try {
+                // 解析日期 "2025-12-09" -> 9
+                int day = LocalDate.parse(item.getDate()).getDayOfMonth();
+                points.add(new KMeansUtil.Point(day, item.getAmount(), -1));
+            } catch (Exception e) {}
+        }
+
+        // 2. 执行算法 (假设聚为 3 类)
+        KMeansUtil.ClusterResult result = KMeansUtil.fit(points, 3, 100);
+
+        return Map.of("code", 200, "data", result);
+    }
+
+    // 2. 新增：获取 AI 对聚类结果的分析报告
+    @GetMapping("/analyze-clustering")
+    public Map<String, Object> analyzeClustering(@RequestHeader("Authorization") String token) {
+        User user = UserController.tokenMap.get(token);
+        if (user == null) return Map.of("code", 401);
+
+        // A. 先重新计算一遍聚类 (为了获取中心点数据)
+        List<InvoiceData> list = invoiceRepository.findByUserIdOrderByIdDesc(user.getId());
+        List<KMeansUtil.Point> points = new ArrayList<>();
+        for (InvoiceData item : list) {
+            try {
+                int day = java.time.LocalDate.parse(item.getDate()).getDayOfMonth();
+                points.add(new KMeansUtil.Point(day, item.getAmount(), -1));
+            } catch (Exception e) {}
+        }
+
+        if (points.size() < 3) {
+            return Map.of("code", 200, "data", "数据量不足，暂无法生成聚类分析报告。请多上传几张票据。");
+        }
+
+        KMeansUtil.ClusterResult result = KMeansUtil.fit(points, 3, 50);
+
+        // B. 构建 Prompt，告诉 AI 三个群体的特征
+        StringBuilder dataDesc = new StringBuilder();
+        List<KMeansUtil.Point> centers = result.getCentroids();
+
+        for (int i = 0; i < centers.size(); i++) {
+            KMeansUtil.Point p = centers.get(i);
+            dataDesc.append(String.format("- 群体%d特征: 平均发生在每月 %d 号左右，平均金额约 %.2f 元。\n",
+                    i + 1, (int)p.getX(), p.getY()));
+        }
+
+        String systemPrompt = "你是一个专业的财务数据分析师。请根据用户的消费聚类中心数据，用通俗易懂的语言分析用户的消费习惯。";
+        String userPrompt = String.format("""
+            我的消费数据被 K-Means 算法聚类为以下 3 类：
+            %s
+            
+            请帮我分析：
+            1. 哪一类可能是日常餐饮/交通？
+            2. 哪一类可能是房租/房贷或固定大额支出？
+            3. 哪一类可能是突发性消费？
+            4. 给出一句简短的理财建议。
+            
+            请直接给出分析结果，不要啰嗦，使用 Markdown 格式。
+            """, dataDesc.toString());
+
+        // C. 调用 AI
+        String analysis = deepSeekService.callAi(systemPrompt, userPrompt);
+
+        return Map.of("code", 200, "data", analysis);
     }
 }
