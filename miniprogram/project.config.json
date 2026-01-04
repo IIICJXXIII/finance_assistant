@@ -2,7 +2,7 @@
   "miniprogramRoot": "./",
   "projectname": "smartdoc-miniprogram",
   "description": "SmartDoc 智能票据归档小程序",
-  "appid": "wx1e751b002e7ee03c",
+  "appid": "",
   "setting": {
     "urlCheck": false,
     "es6": true,
