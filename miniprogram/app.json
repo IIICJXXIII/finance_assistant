@@ -1,0 +1,66 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/register/register",
+    "pages/stats/stats",
+    "pages/upload/upload",
+    "pages/list/list",
+    "pages/chat/chat",
+    "pages/budget/budget",
+    "pages/profile/profile",
+    "pages/calendar/calendar",
+    "pages/settings/settings",
+    "pages/recycle/recycle",
+    "pages/approval/approval",
+    "pages/analysis/analysis",
+    "pages/detail/detail"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#001529",
+    "navigationBarTitleText": "SmartDoc",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f5f7fa"
+  },
+  "tabBar": {
+    "color": "#8a8a8a",
+    "selectedColor": "#409EFF",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/stats/stats",
+        "text": "报表",
+        "iconPath": "assets/icons/stats.png",
+        "selectedIconPath": "assets/icons/stats-active.png"
+      },
+      {
+        "pagePath": "pages/upload/upload",
+        "text": "归档",
+        "iconPath": "assets/icons/upload.png",
+        "selectedIconPath": "assets/icons/upload-active.png"
+      },
+      {
+        "pagePath": "pages/list/list",
+        "text": "记录",
+        "iconPath": "assets/icons/list.png",
+        "selectedIconPath": "assets/icons/list-active.png"
+      },
+      {
+        "pagePath": "pages/chat/chat",
+        "text": "助手",
+        "iconPath": "assets/icons/chat.png",
+        "selectedIconPath": "assets/icons/chat-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "assets/icons/user.png",
+        "selectedIconPath": "assets/icons/user-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

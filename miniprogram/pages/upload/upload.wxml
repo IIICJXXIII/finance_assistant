@@ -1,0 +1,161 @@
+<!--
+  智能归档页面
+  对应原 Vue 项目的 SmartUploader.vue
+-->
+<view class="upload-container">
+  <!-- 上传区域 -->
+  <view class="card upload-card">
+    <view class="card-header">
+      <text class="card-title">📄 票据上传</text>
+      <view class="tag tag-info" wx:if="{{fileType}}">
+        <text>{{fileType === 'image' ? '图片' : 'PDF'}}</text>
+      </view>
+    </view>
+
+    <!-- 上传按钮/预览区 -->
+    <view class="upload-area" bindtap="chooseFile">
+      <block wx:if="{{previewUrl}}">
+        <image 
+          class="preview-image" 
+          src="{{previewUrl}}" 
+          mode="aspectFit"
+        />
+        <view class="reupload-mask">
+          <text class="mask-icon">🔄</text>
+          <text class="mask-text">点击更换</text>
+        </view>
+      </block>
+      <block wx:else>
+        <view class="upload-placeholder">
+          <text class="upload-icon">📤</text>
+          <text class="upload-text">点击上传票据图片</text>
+          <text class="upload-hint">支持 JPG, PNG 格式</text>
+        </view>
+      </block>
+    </view>
+
+    <!-- 识别状态 -->
+    <view class="status-bar" wx:if="{{loading || recognized}}">
+      <view class="status-item" wx:if="{{loading}}">
+        <view class="loading-spinner"></view>
+        <text class="status-text">AI 识别中...</text>
+      </view>
+      <view class="status-item success" wx:elif="{{recognized}}">
+        <text class="status-icon">✅</text>
+        <text class="status-text">识别完成，请核对信息</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 识别结果表单 -->
+  <view class="card form-card">
+    <view class="card-header">
+      <text class="card-title">📝 票据信息</text>
+    </view>
+
+    <!-- 商户名称 -->
+    <view class="form-item">
+      <text class="form-label">商户名称</text>
+      <input 
+        class="form-input"
+        placeholder="例如：农夫山泉 / 京东商城"
+        value="{{formData.merchantName}}"
+        bindinput="onInput"
+        data-field="merchantName"
+      />
+    </view>
+
+    <!-- 项目名称 -->
+    <view class="form-item">
+      <text class="form-label">项目名称</text>
+      <input 
+        class="form-input"
+        placeholder="例如：办公用品采购"
+        value="{{formData.itemName}}"
+        bindinput="onInput"
+        data-field="itemName"
+      />
+    </view>
+
+    <!-- 开票日期 -->
+    <view class="form-item">
+      <text class="form-label">开票日期</text>
+      <picker mode="date" value="{{formData.date}}" bindchange="onDateChange">
+        <view class="form-picker">
+          <text class="{{formData.date ? '' : 'placeholder'}}">
+            {{formData.date || '请选择日期'}}
+          </text>
+          <text class="picker-arrow">▼</text>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 金额 -->
+    <view class="form-item">
+      <text class="form-label">金额 (元)</text>
+      <input 
+        class="form-input"
+        type="digit"
+        placeholder="请输入金额"
+        value="{{formData.amount}}"
+        bindinput="onInput"
+        data-field="amount"
+      />
+    </view>
+
+    <!-- 发票号码 -->
+    <view class="form-item">
+      <text class="form-label">发票号码</text>
+      <input 
+        class="form-input"
+        placeholder="选填"
+        value="{{formData.invoiceCode}}"
+        bindinput="onInput"
+        data-field="invoiceCode"
+      />
+    </view>
+
+    <!-- 分类 -->
+    <view class="form-item">
+      <text class="form-label">费用分类</text>
+      <picker 
+        mode="selector" 
+        range="{{categories}}" 
+        value="{{categoryIndex}}"
+        bindchange="onCategoryChange"
+      >
+        <view class="form-picker">
+          <text class="{{formData.category ? '' : 'placeholder'}}">
+            {{formData.category || '请选择分类'}}
+          </text>
+          <text class="picker-arrow">▼</text>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 备注 -->
+    <view class="form-item">
+      <text class="form-label">备注</text>
+      <textarea 
+        class="form-textarea"
+        placeholder="选填备注信息"
+        value="{{formData.remark}}"
+        bindinput="onInput"
+        data-field="remark"
+      />
+    </view>
+  </view>
+
+  <!-- 底部按钮 -->
+  <view class="bottom-actions safe-area-bottom">
+    <button class="btn btn-default" bindtap="resetForm">重置</button>
+    <button 
+      class="btn btn-primary flex-1" 
+      bindtap="handleSubmit"
+      loading="{{submitting}}"
+      disabled="{{submitting}}"
+    >
+      确认归档
+    </button>
+  </view>
+</view>

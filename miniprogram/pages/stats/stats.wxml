@@ -1,0 +1,148 @@
+<!--
+  数据报表页面 (首页)
+  对应原 Vue 项目的 StatsDashboard.vue
+-->
+<view class="stats-container">
+  <!-- 统计卡片区域 -->
+  <view class="stats-cards">
+    <!-- 累计归档金额 -->
+    <view class="card stat-card">
+      <view class="stat-content">
+        <view class="stat-header">
+          <text class="stat-label">累计归档金额</text>
+          <view class="tag {{monthRate >= 0 ? 'tag-success' : 'tag-danger'}}">
+            <text>{{monthRate >= 0 ? '+' : ''}}{{monthRate}}% 环比</text>
+          </view>
+        </view>
+        <text class="stat-value">¥{{totalAmount}}</text>
+        <text class="stat-footer">共计 {{totalCount}} 张票据</text>
+      </view>
+      <view class="stat-icon icon-success">
+        <text class="icon-text">💰</text>
+      </view>
+    </view>
+
+    <!-- 本月支出 -->
+    <view class="card stat-card">
+      <view class="stat-content">
+        <view class="stat-header">
+          <text class="stat-label">本月支出</text>
+          <view class="tag {{budgetStatus.type}}">
+            <text>{{budgetStatus.text}}</text>
+          </view>
+        </view>
+        <text class="stat-value">¥{{monthAmount}}</text>
+        <text class="stat-footer">预算: ¥{{monthBudget}}</text>
+      </view>
+      <view class="stat-icon icon-warning">
+        <text class="icon-text">💳</text>
+      </view>
+    </view>
+
+    <!-- 最高频分类 -->
+    <view class="card stat-card">
+      <view class="stat-content">
+        <view class="stat-header">
+          <text class="stat-label">最高频分类</text>
+        </view>
+        <text class="stat-value category-value">{{topCategory}}</text>
+        <text class="stat-footer">占比 {{topPercent}}%</text>
+      </view>
+      <view class="stat-icon icon-primary">
+        <text class="icon-text">📊</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 图表区域 -->
+  <view class="charts-section">
+    <!-- 分类分布 -->
+    <view class="card chart-card">
+      <view class="card-header">
+        <text class="card-title">📊 费用类型分布</text>
+      </view>
+      <view class="chart-content">
+        <block wx:if="{{categoryData.length > 0}}">
+          <view class="category-list">
+            <view class="category-item" wx:for="{{categoryData}}" wx:key="name">
+              <view class="category-info">
+                <text class="category-icon">{{item.icon}}</text>
+                <text class="category-name">{{item.name}}</text>
+              </view>
+              <view class="category-bar-wrapper">
+                <view class="category-bar" style="width: {{item.percent}}%; background-color: {{item.color}};"></view>
+              </view>
+              <text class="category-percent">{{item.percent}}%</text>
+            </view>
+          </view>
+        </block>
+        <view wx:else class="empty-state">
+          <text class="empty-text">暂无数据</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 支出趋势 -->
+    <view class="card chart-card">
+      <view class="card-header">
+        <text class="card-title">📈 支出趋势</text>
+        <view class="tag tag-warning">
+          <text>AI 预测</text>
+        </view>
+      </view>
+      <view class="chart-content">
+        <block wx:if="{{trendData.length > 0}}">
+          <view class="trend-chart">
+            <view class="trend-bars">
+              <view class="trend-bar-item" wx:for="{{trendData}}" wx:key="month">
+                <view 
+                  class="trend-bar {{item.isPrediction ? 'prediction' : ''}}" 
+                  style="height: {{item.height}}%;"
+                ></view>
+                <text class="trend-month">{{item.monthLabel}}</text>
+              </view>
+            </view>
+          </view>
+          <view class="trend-legend">
+            <view class="legend-item">
+              <view class="legend-dot actual"></view>
+              <text class="legend-text">实际支出</text>
+            </view>
+            <view class="legend-item">
+              <view class="legend-dot prediction"></view>
+              <text class="legend-text">AI 预测</text>
+            </view>
+          </view>
+        </block>
+        <view wx:else class="empty-state">
+          <text class="empty-text">暂无数据</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 快捷入口 -->
+  <view class="card quick-entry">
+    <view class="card-header">
+      <text class="card-title">⚡ 快捷操作</text>
+    </view>
+    <view class="entry-grid">
+      <view class="entry-item" bindtap="goToUpload">
+        <view class="entry-icon">📤</view>
+        <text class="entry-text">智能归档</text>
+      </view>
+      <view class="entry-item" bindtap="goToList">
+        <view class="entry-icon">📋</view>
+        <text class="entry-text">查看记录</text>
+      </view>
+      <view class="entry-item" bindtap="goToBudget">
+        <view class="entry-icon">💰</view>
+        <text class="entry-text">预算管理</text>
+      </view>
+      <view class="entry-item" bindtap="goToAnalysis">
+        <view class="entry-icon">🤖</view>
+        <text class="entry-text">AI 分析</text>
+      </view>
+    </view>
+  </view>
+</view>

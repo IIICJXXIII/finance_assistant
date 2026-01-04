@@ -1,0 +1,109 @@
+<!--
+  个人中心页面
+  对应原 Vue 项目的 UserProfile.vue
+-->
+<view class="profile-container">
+  <!-- 用户信息头部 -->
+  <view class="user-header">
+    <view class="user-avatar">
+      <text class="avatar-text">{{userInfo.nickname ? userInfo.nickname[0] : 'U'}}</text>
+    </view>
+    <view class="user-info">
+      <text class="user-name">{{userInfo.nickname || userInfo.username || '未登录'}}</text>
+      <view class="user-role tag {{userInfo.role === 'admin' ? 'tag-warning' : 'tag-info'}}">
+        <text>{{userInfo.role === 'admin' ? '管理员' : '普通用户'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 统计卡片 -->
+  <view class="stats-row">
+    <view class="stat-item">
+      <text class="stat-value">{{stats.totalCount}}</text>
+      <text class="stat-label">归档票据</text>
+    </view>
+    <view class="stat-item">
+      <text class="stat-value">¥{{stats.totalAmount}}</text>
+      <text class="stat-label">累计金额</text>
+    </view>
+    <view class="stat-item">
+      <text class="stat-value">{{stats.monthCount}}</text>
+      <text class="stat-label">本月归档</text>
+    </view>
+  </view>
+
+  <!-- 功能菜单 -->
+  <view class="menu-section">
+    <view class="card menu-card">
+      <view class="menu-item" bindtap="goToBudget">
+        <view class="menu-left">
+          <text class="menu-icon">💰</text>
+          <text class="menu-text">预算管理</text>
+        </view>
+        <text class="menu-arrow">›</text>
+      </view>
+      
+      <view class="menu-item" bindtap="goToCalendar">
+        <view class="menu-left">
+          <text class="menu-icon">📅</text>
+          <text class="menu-text">财务日历</text>
+        </view>
+        <text class="menu-arrow">›</text>
+      </view>
+      
+      <view class="menu-item" bindtap="goToRecycle">
+        <view class="menu-left">
+          <text class="menu-icon">🗑️</text>
+          <text class="menu-text">回收站</text>
+        </view>
+        <text class="menu-arrow">›</text>
+      </view>
+
+      <view class="menu-item" bindtap="goToApproval" wx:if="{{userInfo.role === 'admin'}}">
+        <view class="menu-left">
+          <text class="menu-icon">✅</text>
+          <text class="menu-text">审批工作台</text>
+        </view>
+        <text class="menu-arrow">›</text>
+      </view>
+    </view>
+
+    <view class="card menu-card">
+      <view class="menu-item" bindtap="goToSettings">
+        <view class="menu-left">
+          <text class="menu-icon">⚙️</text>
+          <text class="menu-text">系统设置</text>
+        </view>
+        <text class="menu-arrow">›</text>
+      </view>
+      
+      <view class="menu-item" bindtap="goToAnalysis">
+        <view class="menu-left">
+          <text class="menu-icon">🤖</text>
+          <text class="menu-text">AI 聚类分析</text>
+        </view>
+        <text class="menu-arrow">›</text>
+      </view>
+
+      <view class="menu-item" bindtap="showAbout">
+        <view class="menu-left">
+          <text class="menu-icon">ℹ️</text>
+          <text class="menu-text">关于</text>
+        </view>
+        <text class="menu-arrow">›</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 退出登录 -->
+  <view class="logout-section">
+    <button class="btn btn-danger logout-btn" bindtap="handleLogout">
+      退出登录
+    </button>
+  </view>
+
+  <!-- 版本信息 -->
+  <view class="version-info">
+    <text>SmartDoc v1.0.0</text>
+  </view>
+</view>

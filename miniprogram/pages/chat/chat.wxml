@@ -1,0 +1,96 @@
+<!--
+  AI 财务助手页面
+  对应原 Vue 项目的 ChatAssistant.vue
+-->
+<view class="chat-container">
+  <!-- 聊天消息区域 -->
+  <scroll-view 
+    class="chat-messages"
+    scroll-y
+    scroll-into-view="{{scrollToView}}"
+    scroll-with-animation
+  >
+    <!-- 欢迎消息 -->
+    <view class="welcome-card" wx:if="{{messages.length === 0}}">
+      <view class="welcome-icon">🤖</view>
+      <text class="welcome-title">你好，我是 SmartDoc AI 助手</text>
+      <text class="welcome-desc">我可以帮你分析财务数据、解答报销问题、提供消费建议</text>
+      
+      <view class="quick-questions">
+        <text class="quick-title">快速提问：</text>
+        <view class="quick-list">
+          <view class="quick-item" bindtap="sendQuickQuestion" data-q="这个月的消费情况怎么样？">
+            📊 这个月的消费情况怎么样？
+          </view>
+          <view class="quick-item" bindtap="sendQuickQuestion" data-q="帮我分析下最近的支出趋势">
+            📈 帮我分析下最近的支出趋势
+          </view>
+          <view class="quick-item" bindtap="sendQuickQuestion" data-q="有哪些费用可以优化？">
+            💡 有哪些费用可以优化？
+          </view>
+          <view class="quick-item" bindtap="sendQuickQuestion" data-q="报销发票有什么注意事项？">
+            📝 报销发票有什么注意事项？
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 消息列表 -->
+    <view 
+      class="message-item {{item.role}}"
+      wx:for="{{messages}}"
+      wx:key="id"
+      id="msg-{{item.id}}"
+    >
+      <view class="message-avatar">
+        <text class="avatar-text">{{item.role === 'user' ? '👤' : '🤖'}}</text>
+      </view>
+      <view class="message-content">
+        <view class="message-bubble">
+          <text class="message-text">{{item.content}}</text>
+        </view>
+        <text class="message-time">{{item.time}}</text>
+      </view>
+    </view>
+
+    <!-- AI 正在输入 -->
+    <view class="message-item assistant" wx:if="{{thinking}}">
+      <view class="message-avatar">
+        <text class="avatar-text">🤖</text>
+      </view>
+      <view class="message-content">
+        <view class="message-bubble typing">
+          <view class="typing-dots">
+            <view class="dot"></view>
+            <view class="dot"></view>
+            <view class="dot"></view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 底部占位 -->
+    <view class="bottom-placeholder" id="bottom"></view>
+  </scroll-view>
+
+  <!-- 输入区域 -->
+  <view class="input-section safe-area-bottom">
+    <view class="input-wrapper">
+      <input 
+        class="chat-input"
+        placeholder="输入你的问题..."
+        value="{{inputValue}}"
+        bindinput="onInput"
+        bindconfirm="sendMessage"
+        confirm-type="send"
+        disabled="{{thinking}}"
+      />
+      <view 
+        class="send-btn {{inputValue.trim() && !thinking ? 'active' : ''}}"
+        bindtap="sendMessage"
+      >
+        <text class="send-icon">📤</text>
+      </view>
+    </view>
+  </view>
+</view>

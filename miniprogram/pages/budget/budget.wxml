@@ -1,0 +1,133 @@
+<!--
+  预算中心页面
+  对应原 Vue 项目的 BudgetCenter.vue
+-->
+<view class="budget-container">
+  <!-- 本月预算概览 -->
+  <view class="card overview-card">
+    <view class="card-header">
+      <text class="card-title">💰 本月预算</text>
+      <text class="edit-btn" bindtap="showEditModal">编辑</text>
+    </view>
+    
+    <view class="budget-info">
+      <view class="budget-main">
+        <text class="budget-label">预算限额</text>
+        <text class="budget-value">¥{{currentBudget.amount || '0.00'}}</text>
+      </view>
+      
+      <view class="progress-section">
+        <view class="progress-header">
+          <text class="progress-label">已使用 ¥{{usedAmount}}</text>
+          <text class="progress-percent {{usagePercent >= 100 ? 'danger' : usagePercent >= 80 ? 'warning' : ''}}">
+            {{usagePercent}}%
+          </text>
+        </view>
+        <view class="progress-bar">
+          <view 
+            class="progress-fill {{usagePercent >= 100 ? 'danger' : usagePercent >= 80 ? 'warning' : ''}}" 
+            style="width: {{Math.min(usagePercent, 100)}}%;"
+          ></view>
+        </view>
+        <text class="progress-remain">剩余 ¥{{remainAmount}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 分类预算 -->
+  <view class="card">
+    <view class="card-header">
+      <text class="card-title">📊 分类预算</text>
+      <text class="add-btn" bindtap="showAddCategory">+ 添加</text>
+    </view>
+
+    <view class="category-list" wx:if="{{categoryBudgets.length > 0}}">
+      <view 
+        class="category-item"
+        wx:for="{{categoryBudgets}}"
+        wx:key="category"
+      >
+        <view class="category-header">
+          <view class="category-left">
+            <text class="category-icon">{{item.icon}}</text>
+            <text class="category-name">{{item.category}}</text>
+          </view>
+          <view class="category-right">
+            <text class="category-used">¥{{item.usedAmount}}</text>
+            <text class="category-limit"> / ¥{{item.limitAmount}}</text>
+          </view>
+        </view>
+        <view class="category-progress">
+          <view class="progress-bar small">
+            <view 
+              class="progress-fill {{item.isOver ? 'danger' : item.percent >= 80 ? 'warning' : ''}}"
+              style="width: {{item.percent > 100 ? 100 : item.percent}}%;"
+            ></view>
+          </view>
+          <text class="category-percent {{item.isOver ? 'danger' : ''}}">{{item.percent}}%</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="empty-state" wx:else>
+      <text class="empty-text">暂未设置分类预算</text>
+    </view>
+  </view>
+
+  <!-- 历史预算 -->
+  <view class="card">
+    <view class="card-header">
+      <text class="card-title">📅 历史预算</text>
+    </view>
+
+    <view class="history-list" wx:if="{{historyBudgets.length > 0}}">
+      <view 
+        class="history-item"
+        wx:for="{{historyBudgets}}"
+        wx:key="month"
+      >
+        <text class="history-month">{{item.month}}</text>
+        <view class="history-info">
+          <text class="history-budget">预算 ¥{{item.amount}}</text>
+          <text class="history-used">支出 ¥{{item.used}}</text>
+        </view>
+        <view class="tag {{item.status === 'over' ? 'tag-danger' : 'tag-success'}}">
+          <text>{{item.status === 'over' ? '超支' : '正常'}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="empty-state" wx:else>
+      <text class="empty-text">暂无历史记录</text>
+    </view>
+  </view>
+</view>
+
+<!-- 编辑弹窗 -->
+<view class="modal-mask" wx:if="{{showModal}}" bindtap="hideModal"></view>
+<view class="modal {{showModal ? 'show' : ''}}">
+  <view class="modal-header">
+    <text class="modal-title">设置分类预算</text>
+    <text class="modal-close" bindtap="hideModal">×</text>
+  </view>
+  <view class="modal-body">
+    <view class="form-item">
+      <text class="form-label">消费分类</text>
+      <view class="form-input disabled">{{editCategory || '请先选择分类'}}</view>
+    </view>
+    <view class="form-item">
+      <text class="form-label">预算金额 (元)</text>
+      <input 
+        class="form-input"
+        type="digit"
+        placeholder="请输入预算金额"
+        value="{{editAmount}}"
+        bindinput="onAmountInput"
+      />
+    </view>
+  </view>
+  <view class="modal-footer">
+    <button class="btn btn-default" bindtap="hideModal">取消</button>
+    <button class="btn btn-primary" bindtap="saveBudget">保存</button>
+  </view>
+</view>

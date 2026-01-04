@@ -1,0 +1,95 @@
+<!--
+  AI 聚类分析页面
+-->
+<view class="analysis-container">
+  <view class="card intro-card">
+    <view class="intro-icon">🤖</view>
+    <text class="intro-title">AI 消费聚类分析</text>
+    <text class="intro-desc">基于 K-Means 算法，智能分析您的消费行为，识别消费模式</text>
+    <button class="btn btn-primary analyze-btn" bindtap="startAnalysis" loading="{{analyzing}}">
+      {{analyzing ? '分析中...' : '开始分析'}}
+    </button>
+  </view>
+
+  <view wx:if="{{analyzed}}">
+    <!-- 分析结果概览 -->
+    <view class="card result-card">
+      <view class="card-header">
+        <text class="card-title">📊 分析结果</text>
+      </view>
+      
+      <view class="result-summary">
+        <view class="summary-item">
+          <text class="summary-value">{{clusterCount}}</text>
+          <text class="summary-label">消费类群</text>
+        </view>
+        <view class="summary-item">
+          <text class="summary-value">{{dataCount}}</text>
+          <text class="summary-label">分析样本</text>
+        </view>
+        <view class="summary-item">
+          <text class="summary-value">{{mainPattern}}</text>
+          <text class="summary-label">主要模式</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 聚类详情 -->
+    <view class="card">
+      <view class="card-header">
+        <text class="card-title">🎯 类群分布</text>
+      </view>
+      
+      <view class="cluster-list">
+        <view 
+          class="cluster-item"
+          wx:for="{{clusters}}"
+          wx:key="id"
+        >
+          <view class="cluster-header">
+            <view class="cluster-badge" style="background-color: {{item.color}};">
+              <text>{{item.name}}</text>
+            </view>
+            <text class="cluster-count">{{item.count}} 条记录</text>
+          </view>
+          <view class="cluster-info">
+            <text class="cluster-desc">{{item.description}}</text>
+          </view>
+          <view class="cluster-stats">
+            <view class="stat">
+              <text class="stat-label">平均金额</text>
+              <text class="stat-value">¥{{item.avgAmount}}</text>
+            </view>
+            <view class="stat">
+              <text class="stat-label">占比</text>
+              <text class="stat-value">{{item.percent}}%</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- AI 建议 -->
+    <view class="card">
+      <view class="card-header">
+        <text class="card-title">💡 AI 建议</text>
+      </view>
+      <view class="suggestion-list">
+        <view class="suggestion-item" wx:for="{{suggestions}}" wx:key="*this">
+          <text class="suggestion-icon">✨</text>
+          <text class="suggestion-text">{{item}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- AI 分析报告 -->
+    <view class="card" wx:if="{{aiAnalysis}}">
+      <view class="card-header">
+        <text class="card-title">🤖 AI 深度分析报告</text>
+      </view>
+      <view class="ai-report">
+        <text class="ai-report-text">{{aiAnalysis}}</text>
+      </view>
+    </view>
+  </view>
+</view>

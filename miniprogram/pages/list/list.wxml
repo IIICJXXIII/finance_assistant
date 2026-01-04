@@ -1,0 +1,143 @@
+<!--
+  归档记录列表页面
+  对应原 Vue 项目的 DocList.vue
+-->
+<view class="list-container">
+  <!-- 搜索区域 -->
+  <view class="search-section">
+    <view class="search-bar">
+      <image class="search-icon" src="/assets/icons/search.png" mode="aspectFit" />
+      <input 
+        class="search-input"
+        placeholder="搜索商户/项目..."
+        value="{{keyword}}"
+        bindinput="onSearchInput"
+        confirm-type="search"
+        bindconfirm="handleSearch"
+      />
+      <image 
+        wx:if="{{keyword}}"
+        class="clear-icon" 
+        src="/assets/icons/close.png" 
+        mode="aspectFit"
+        bindtap="clearSearch"
+      />
+    </view>
+    
+    <!-- 分类筛选 -->
+    <scroll-view class="filter-scroll" scroll-x enable-flex>
+      <view 
+        class="filter-item {{currentCategory === '' ? 'active' : ''}}"
+        bindtap="onCategoryFilter"
+        data-category=""
+      >
+        全部
+      </view>
+      <view 
+        class="filter-item {{currentCategory === item ? 'active' : ''}}"
+        wx:for="{{categories}}"
+        wx:key="*this"
+        bindtap="onCategoryFilter"
+        data-category="{{item}}"
+      >
+        {{item}}
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 列表区域 -->
+  <view class="list-section">
+    <!-- 工具栏 -->
+    <view class="toolbar">
+      <text class="list-title">🧾 归档记录</text>
+      <view class="tag tag-info">
+        <text>共 {{total}} 条</text>
+      </view>
+    </view>
+
+    <!-- 列表 -->
+    <scroll-view 
+      class="list-scroll" 
+      scroll-y
+      refresher-enabled
+      refresher-triggered="{{refreshing}}"
+      bindrefresherrefresh="onRefresh"
+      bindscrolltolower="onLoadMore"
+    >
+      <block wx:if="{{list.length > 0}}">
+        <view 
+          class="list-item card"
+          wx:for="{{list}}"
+          wx:key="id"
+          bindtap="viewDetail"
+          data-item="{{item}}"
+        >
+          <view class="item-main">
+            <view class="item-header">
+              <text class="merchant-name ellipsis">{{item.merchantName}}</text>
+              <text class="amount">¥{{item.amountStr}}</text>
+            </view>
+            <view class="item-info">
+              <text class="item-name ellipsis">{{item.itemName || '-'}}</text>
+            </view>
+            <view class="item-footer">
+              <view class="footer-left">
+                <view class="tag {{item.categoryClass}}">
+                  <text>{{item.category}}</text>
+                </view>
+                <text class="date">{{item.date}}</text>
+              </view>
+              <view class="status-tag {{item.statusClass}}">
+                <text>{{item.statusText}}</text>
+              </view>
+            </view>
+          </view>
+          
+          <!-- 异常标识 -->
+          <view class="anomaly-badge" wx:if="{{item.isAnomaly === 1}}">
+            <text>⚠️</text>
+          </view>
+        </view>
+      </block>
+
+      <!-- 空状态 -->
+      <view wx:elif="{{!loading}}" class="empty-state">
+        <text class="empty-icon">📋</text>
+        <text class="empty-text">暂无归档记录</text>
+        <button class="btn btn-primary" style="margin-top: 30rpx; width: 240rpx;" bindtap="goToUpload">
+          立即归档
+        </button>
+      </view>
+
+      <!-- 加载更多 -->
+      <view class="load-more" wx:if="{{list.length > 0}}">
+        <text wx:if="{{loadingMore}}">加载中...</text>
+        <text wx:elif="{{noMore}}">— 没有更多了 —</text>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 操作弹窗 -->
+  <view class="action-sheet-mask" wx:if="{{showActions}}" bindtap="hideActions"></view>
+  <view class="action-sheet {{showActions ? 'show' : ''}}">
+    <view class="action-header">
+      <text class="action-title">{{currentItem.merchantName}}</text>
+      <text class="action-amount">¥{{currentItem.amountStr}}</text>
+    </view>
+    <view class="action-list">
+      <view class="action-item" bindtap="submitApproval" wx:if="{{currentItem.status === 0}}">
+        <text class="action-icon">📤</text>
+        <text>提交审批</text>
+      </view>
+      <view class="action-item" bindtap="editItem" wx:if="{{currentItem.status === 0 || currentItem.status === 3}}">
+        <text class="action-icon">✏️</text>
+        <text>编辑</text>
+      </view>
+      <view class="action-item danger" bindtap="deleteItem">
+        <text class="action-icon">🗑️</text>
+        <text>删除</text>
+      </view>
+    </view>
+    <view class="action-cancel" bindtap="hideActions">取消</view>
+  </view>
+</view>

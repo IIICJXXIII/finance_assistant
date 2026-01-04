@@ -1,0 +1,55 @@
+<!--
+  财务日历页面
+-->
+<view class="calendar-container">
+  <!-- 月份选择 -->
+  <view class="month-nav">
+    <text class="nav-btn" bindtap="prevMonth">‹</text>
+    <text class="month-text">{{currentYear}}年{{currentMonth}}月</text>
+    <text class="nav-btn" bindtap="nextMonth">›</text>
+  </view>
+
+  <!-- 日历网格 -->
+  <view class="calendar-grid">
+    <view class="weekday-row">
+      <text class="weekday" wx:for="{{weekdays}}" wx:key="*this">{{item}}</text>
+    </view>
+    <view class="days-grid">
+      <view 
+        class="day-cell {{day.isCurrentMonth ? '' : 'other-month'}} {{day.isToday ? 'today' : ''}} {{day.hasData ? 'has-data' : ''}}"
+        wx:for="{{days}}"
+        wx:key="date"
+        bindtap="selectDate"
+        data-date="{{day.date}}"
+      >
+        <text class="day-num">{{day.day}}</text>
+        <view class="day-dot" wx:if="{{day.hasData}}"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 当日支出 -->
+  <view class="card detail-card">
+    <view class="card-header">
+      <text class="card-title">📅 {{selectedDate}} 支出</text>
+      <text class="total-amount">¥{{dayTotal}}</text>
+    </view>
+
+    <view class="expense-list" wx:if="{{dayExpenses.length > 0}}">
+      <view class="expense-item" wx:for="{{dayExpenses}}" wx:key="id">
+        <view class="expense-left">
+          <text class="expense-icon">{{item.icon}}</text>
+          <view class="expense-info">
+            <text class="expense-name ellipsis">{{item.merchantName}}</text>
+            <text class="expense-category">{{item.category}}</text>
+          </view>
+        </view>
+        <text class="expense-amount">-¥{{item.amountStr}}</text>
+      </view>
+    </view>
+
+    <view class="empty-state" wx:else>
+      <text class="empty-text">当日暂无支出记录</text>
+    </view>
+  </view>
+</view>

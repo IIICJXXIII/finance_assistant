@@ -1,0 +1,120 @@
+<!--
+  注册页面
+  对应原 Vue 项目的 Register.vue
+-->
+<view class="register-container">
+  <!-- 自定义导航栏 -->
+  <view class="nav-bar" style="padding-top: {{statusBarHeight}}px;">
+    <view class="nav-content">
+      <view class="back-btn" bindtap="goBack">
+        <image class="back-icon" src="/assets/icons/arrow-left.png" mode="aspectFit" />
+      </view>
+      <text class="nav-title">用户注册</text>
+      <view class="placeholder"></view>
+    </view>
+  </view>
+
+  <!-- 表单区域 -->
+  <view class="form-section" style="padding-top: {{navHeight}}px;">
+    <view class="form-card">
+      <view class="form-header">
+        <text class="form-title">创建账号</text>
+        <text class="form-subtitle">加入 SmartDoc，开启智能财务管理</text>
+      </view>
+
+      <!-- 用户名 -->
+      <view class="form-item">
+        <text class="form-label">用户名</text>
+        <view class="input-wrapper">
+          <input 
+            class="input"
+            type="text"
+            placeholder="请输入用户名"
+            placeholder-class="input-placeholder"
+            value="{{formData.username}}"
+            bindinput="onInput"
+            data-field="username"
+          />
+        </view>
+      </view>
+
+      <!-- 昵称 -->
+      <view class="form-item">
+        <text class="form-label">昵称</text>
+        <view class="input-wrapper">
+          <input 
+            class="input"
+            type="text"
+            placeholder="请输入昵称（可选）"
+            placeholder-class="input-placeholder"
+            value="{{formData.nickname}}"
+            bindinput="onInput"
+            data-field="nickname"
+          />
+        </view>
+      </view>
+
+      <!-- 密码 -->
+      <view class="form-item">
+        <text class="form-label">密码</text>
+        <view class="input-wrapper">
+          <input 
+            class="input"
+            type="text"
+            password="{{!showPassword}}"
+            placeholder="请输入密码（至少6位）"
+            placeholder-class="input-placeholder"
+            value="{{formData.password}}"
+            bindinput="onInput"
+            data-field="password"
+          />
+          <image 
+            class="eye-icon" 
+            src="/assets/icons/{{showPassword ? 'eye-open' : 'eye-close'}}.png" 
+            mode="aspectFit"
+            bindtap="togglePassword"
+          />
+        </view>
+      </view>
+
+      <!-- 确认密码 -->
+      <view class="form-item">
+        <text class="form-label">确认密码</text>
+        <view class="input-wrapper">
+          <input 
+            class="input"
+            type="text"
+            password="{{!showConfirmPassword}}"
+            placeholder="请再次输入密码"
+            placeholder-class="input-placeholder"
+            value="{{formData.confirmPassword}}"
+            bindinput="onInput"
+            data-field="confirmPassword"
+          />
+          <image 
+            class="eye-icon" 
+            src="/assets/icons/{{showConfirmPassword ? 'eye-open' : 'eye-close'}}.png" 
+            mode="aspectFit"
+            bindtap="toggleConfirmPassword"
+          />
+        </view>
+      </view>
+
+      <!-- 注册按钮 -->
+      <button 
+        class="btn btn-primary register-btn" 
+        bindtap="handleRegister"
+        loading="{{loading}}"
+        disabled="{{loading}}"
+      >
+        立即注册
+      </button>
+
+      <!-- 登录链接 -->
+      <view class="link-area">
+        <text class="link-text">已有账号？</text>
+        <text class="link-primary" bindtap="goBack">返回登录</text>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,120 @@
+<!--
+  票据详情/编辑页面
+-->
+<view class="detail-container">
+  <!-- 状态提示 -->
+  <view class="alert alert-warning" wx:if="{{detail.status === 1}}">
+    <text class="alert-icon">⏳</text>
+    <text class="alert-text">该票据正在审核中</text>
+  </view>
+  <view class="alert alert-success" wx:if="{{detail.status === 2}}">
+    <text class="alert-icon">✅</text>
+    <text class="alert-text">该票据已审核通过</text>
+  </view>
+  <view class="alert alert-danger" wx:if="{{detail.status === 3}}">
+    <text class="alert-icon">❌</text>
+    <text class="alert-text">该票据已被驳回: {{detail.auditRemark || '无原因'}}</text>
+  </view>
+
+  <!-- 票据信息 -->
+  <view class="card">
+    <view class="card-header">
+      <text class="card-title">📋 票据信息</text>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">商户名称</text>
+      <input 
+        class="form-input"
+        value="{{formData.merchantName}}"
+        bindinput="onInput"
+        data-field="merchantName"
+        disabled="{{!isEditable}}"
+      />
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">项目名称</text>
+      <input 
+        class="form-input"
+        value="{{formData.itemName}}"
+        bindinput="onInput"
+        data-field="itemName"
+        disabled="{{!isEditable}}"
+      />
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">开票日期</text>
+      <picker 
+        mode="date" 
+        value="{{formData.date}}" 
+        bindchange="onDateChange"
+        disabled="{{!isEditable}}"
+      >
+        <view class="form-picker">
+          <text>{{formData.date || '请选择'}}</text>
+          <text class="picker-arrow" wx:if="{{isEditable}}">▼</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">金额</text>
+      <input 
+        class="form-input"
+        type="digit"
+        value="{{formData.amount}}"
+        bindinput="onInput"
+        data-field="amount"
+        disabled="{{!isEditable}}"
+      />
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">发票号码</text>
+      <input 
+        class="form-input"
+        value="{{formData.invoiceCode}}"
+        bindinput="onInput"
+        data-field="invoiceCode"
+        disabled="{{!isEditable}}"
+      />
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">费用分类</text>
+      <picker 
+        mode="selector" 
+        range="{{categories}}" 
+        value="{{categoryIndex}}"
+        bindchange="onCategoryChange"
+        disabled="{{!isEditable}}"
+      >
+        <view class="form-picker">
+          <text>{{formData.category || '请选择'}}</text>
+          <text class="picker-arrow" wx:if="{{isEditable}}">▼</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">备注</text>
+      <textarea 
+        class="form-textarea"
+        value="{{formData.remark}}"
+        bindinput="onInput"
+        data-field="remark"
+        disabled="{{!isEditable}}"
+      />
+    </view>
+  </view>
+
+  <!-- 底部操作 -->
+  <view class="bottom-actions safe-area-bottom" wx:if="{{isEditable}}">
+    <button class="btn btn-default" bindtap="goBack">取消</button>
+    <button class="btn btn-primary flex-1" bindtap="saveChanges" loading="{{saving}}">
+      保存修改
+    </button>
+  </view>
+</view>

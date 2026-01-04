@@ -1,0 +1,63 @@
+<!--
+  审批工作台页面
+-->
+<view class="approval-container">
+  <view class="tabs">
+    <view 
+      class="tab-item {{currentTab === 'pending' ? 'active' : ''}}"
+      bindtap="switchTab"
+      data-tab="pending"
+    >
+      待审批
+      <view class="badge" wx:if="{{pendingCount > 0}}">{{pendingCount}}</view>
+    </view>
+    <view 
+      class="tab-item {{currentTab === 'approved' ? 'active' : ''}}"
+      bindtap="switchTab"
+      data-tab="approved"
+    >
+      已审批
+    </view>
+  </view>
+
+  <scroll-view class="list-scroll" scroll-y>
+    <view wx:if="{{list.length > 0}}">
+      <view 
+        class="card list-item"
+        wx:for="{{list}}"
+        wx:key="id"
+      >
+        <view class="item-header">
+          <text class="merchant-name ellipsis">{{item.merchantName}}</text>
+          <text class="amount">¥{{item.amountStr}}</text>
+        </view>
+        <view class="item-info">
+          <text class="info-text">{{item.itemName || '-'}}</text>
+          <text class="info-date">{{item.date}}</text>
+        </view>
+        <view class="item-meta">
+          <view class="tag tag-info">
+            <text>{{item.category}}</text>
+          </view>
+          <text class="submitter">提交人: {{item.username || '-'}}</text>
+        </view>
+        
+        <view class="item-actions" wx:if="{{currentTab === 'pending'}}">
+          <button class="action-btn reject" bindtap="handleReject" data-item="{{item}}">驳回</button>
+          <button class="action-btn approve" bindtap="handleApprove" data-item="{{item}}">通过</button>
+        </view>
+        
+        <view class="item-result" wx:else>
+          <view class="tag {{item.status === 2 ? 'tag-success' : 'tag-danger'}}">
+            <text>{{item.status === 2 ? '已通过' : '已驳回'}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="empty-state" wx:else>
+      <text class="empty-icon">📋</text>
+      <text class="empty-text">暂无{{currentTab === 'pending' ? '待审批' : '已审批'}}记录</text>
+    </view>
+  </scroll-view>
+</view>

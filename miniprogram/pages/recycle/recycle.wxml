@@ -1,0 +1,39 @@
+<!--
+  回收站页面
+-->
+<view class="recycle-container">
+  <view class="toolbar">
+    <text class="page-title">🗑️ 回收站</text>
+    <text class="clear-btn" bindtap="clearAll" wx:if="{{list.length > 0}}">清空</text>
+  </view>
+
+  <view class="list-section" wx:if="{{list.length > 0}}">
+    <view 
+      class="card list-item"
+      wx:for="{{list}}"
+      wx:key="id"
+    >
+      <view class="item-main">
+        <view class="item-header">
+          <text class="merchant-name ellipsis">{{item.merchantName}}</text>
+          <text class="amount">¥{{item.amountStr}}</text>
+        </view>
+        <view class="item-info">
+          <text class="item-date">{{item.date}}</text>
+          <view class="tag tag-info">
+            <text>{{item.category}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="item-actions">
+        <button class="action-btn restore" bindtap="restoreItem" data-id="{{item.id}}">恢复</button>
+        <button class="action-btn delete" bindtap="deleteItem" data-id="{{item.id}}">删除</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty-state" wx:else>
+    <text class="empty-icon">🗑️</text>
+    <text class="empty-text">回收站是空的</text>
+  </view>
+</view>
