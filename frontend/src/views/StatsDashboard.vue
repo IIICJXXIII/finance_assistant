@@ -1,0 +1,459 @@
+<template>
+  <div class="dashboard-container">
+    <div class="stats-cards">
+      <el-card shadow="hover" class="card-item">
+        <div class="card-content">
+          <div class="meta">
+            <span class="label">累计归档金额</span>
+            <!-- 动态计算本月环比率 -->
+            <el-tag :type="monthOverMonthRate >= 0 ? 'success' : 'danger'" size="small">
+              {{ monthOverMonthRate >= 0 ? '+' : '' }}{{ monthOverMonthRate.toFixed(1) }}% 环比
+            </el-tag>
+          </div>
+          <div class="value">¥{{ totalAmount.toFixed(2) }}</div>
+          <div class="footer">共计 {{ totalCount }} 张票据</div>
+        </div>
+        <div class="icon-bg success">
+          <el-icon><Money /></el-icon>
+        </div>
+      </el-card>
+
+      <el-card shadow="hover" class="card-item">
+        <div class="card-content">
+          <div class="meta">
+            <span class="label">本月支出</span>
+            <!-- 根据预算限额动态判断状态 -->
+            <el-tag :type="budgetStatusType" size="small">{{ budgetStatusText }}</el-tag>
+          </div>
+          <div class="value">¥{{ currentMonthAmount.toFixed(2) }}</div>
+          <div class="footer">最近更新: {{ lastUpdate }}</div>
+        </div>
+        <div class="icon-bg warning">
+          <el-icon><Wallet /></el-icon>
+        </div>
+      </el-card>
+
+      <el-card shadow="hover" class="card-item">
+        <div class="card-content">
+          <div class="meta">
+            <span class="label">最高频分类</span>
+          </div>
+          <div class="value">{{ topCategory }}</div>
+          <div class="footer">占比 {{ topCategoryPercent }}%</div>
+        </div>
+        <div class="icon-bg primary">
+          <el-icon><PieChart /></el-icon>
+        </div>
+      </el-card>
+    </div>
+
+    <div class="charts-row">
+      <el-card shadow="never" class="chart-card">
+        <template #header>
+          <div class="chart-header">
+            <span>📊 费用类型分布</span>
+          </div>
+        </template>
+        <div ref="pieChartRef" class="chart-box"></div>
+      </el-card>
+
+      <el-card shadow="never" class="chart-card">
+        <template #header>
+          <div class="chart-header">
+            <span>📈 支出趋势 & AI 预测</span>
+            <el-tag type="warning" effect="plain" size="small" style="margin-left: 10px">
+              基于线性回归算法
+            </el-tag>
+          </div>
+        </template>
+        <div ref="lineChartRef" class="chart-box"></div>
+      </el-card>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+/**
+ * StatsDashboard.vue - 数据报表仪表板
+ *
+ * 功能概述:
+ * 1. 展示核心统计指标卡片 (总金额、本月支出、高频分类)
+ * 2. 费用类型分布饼图 - ECharts 实现
+ * 3. 支出趋势折线图 + AI 线性回归预测
+ *
+ * 技术要点:
+ * - ECharts: 专业的数据可视化库
+ * - 线性回归: 后端计算下月支出预测值
+ */
+
+import { ref, onMounted, computed, nextTick } from 'vue'
+import { Money, Wallet, PieChart } from '@element-plus/icons-vue'
+import * as echarts from 'echarts' // ECharts 图表库
+import axios from 'axios'
+
+// ===== 响应式状态 =====
+const allData = ref<any[]>([]) // 全部归档数据
+const pieChartRef = ref(null) // 饼图 DOM 引用
+const lineChartRef = ref(null) // 折线图 DOM 引用
+
+// ===== 计算属性 (基于全量数据统计) =====
+
+/** 累计归档金额 */
+const totalAmount = computed(() => allData.value.reduce((sum, item) => sum + item.amount, 0))
+
+/** 总票据数量 */
+const totalCount = computed(() => allData.value.length)
+
+/** 本月支出金额 */
+const currentMonthAmount = computed(() => {
+  // 获取当前月份字符串 (格式: YYYY-MM)
+  const nowStr = new Date().toISOString().slice(0, 7)
+  return allData.value
+    .filter((item) => item.date.startsWith(nowStr))
+    .reduce((sum, item) => sum + item.amount, 0)
+})
+
+/** 上月支出金额 (用于计算环比率) */
+const lastMonthAmount = computed(() => {
+  // 计算上月日期字符串 (格式: YYYY-MM)
+  const now = new Date()
+  now.setMonth(now.getMonth() - 1)
+  const lastMonthStr = now.toISOString().slice(0, 7)
+  return allData.value
+    .filter((item) => item.date.startsWith(lastMonthStr))
+    .reduce((sum, item) => sum + item.amount, 0)
+})
+
+/** 本月环比率 (相比上月的增减百分比) */
+const monthOverMonthRate = computed(() => {
+  if (lastMonthAmount.value === 0) {
+    // 上月无数据，若本月有数据则显示 100%，无数据显示 0%
+    return currentMonthAmount.value > 0 ? 100 : 0
+  }
+  return ((currentMonthAmount.value - lastMonthAmount.value) / lastMonthAmount.value) * 100
+})
+
+/** 最后更新时间 */
+const lastUpdate = computed(() => {
+  if (allData.value.length === 0) return '-'
+  return allData.value[0].createTime?.replace('T', ' ').slice(0, 16) || '刚刚'
+})
+
+// 最高频分类统计
+const topCategory = ref('-')
+const topCategoryPercent = ref('0')
+
+// 预算相关状态
+const monthlyBudget = ref(0) // 月度预算限额
+
+/** 预算状态文本 */
+const budgetStatusText = computed(() => {
+  if (monthlyBudget.value <= 0) return '未设预算'
+  const usage = (currentMonthAmount.value / monthlyBudget.value) * 100
+  if (usage >= 100) return '已超支'
+  if (usage >= 80) return '接近上限'
+  return '预算内'
+})
+
+/** 预算状态标签类型 */
+const budgetStatusType = computed(() => {
+  if (monthlyBudget.value <= 0) return 'info'
+  const usage = (currentMonthAmount.value / monthlyBudget.value) * 100
+  if (usage >= 100) return 'danger'
+  if (usage >= 80) return 'warning'
+  return 'success'
+})
+
+// ===== 核心逻辑 =====
+
+/** 组件挂载时初始化 */
+onMounted(async () => {
+  await fetchData()
+  // 添加窗口尺寸变化监听，使图表自适应
+  window.addEventListener('resize', handleResize)
+})
+
+/**
+ * 获取数据并渲染图表
+ */
+const fetchData = async () => {
+  try {
+    // 1. 获取列表数据用于计算顶部卡片和饼图
+    const listRes = await axios.get('http://localhost:8080/api/doc/list')
+    allData.value = listRes.data
+    calculateTopCategory()
+
+    // 渲染饼图 (使用 nextTick 确保 DOM 已渲染)
+    nextTick(() => {
+      if (pieChartRef.value) renderPieChart()
+    })
+
+    // 2. 获取当前用户的预算设置
+    try {
+      const budgetRes = await axios.get('http://localhost:8080/api/budget/current')
+      if (budgetRes.data.code === 200 && budgetRes.data.data) {
+        monthlyBudget.value = budgetRes.data.data.monthlyLimit || 0
+      }
+    } catch (e) {
+      console.warn('预算数据获取失败，使用默认值', e)
+    }
+
+    // 3. 获取趋势预测数据 (后端线性回归计算)
+    const trendRes = await axios.get('http://localhost:8080/api/stats/trend')
+    if (trendRes.data.code === 200) {
+      nextTick(() => {
+        // 传入后端计算好的预测数据渲染折线图
+        if (lineChartRef.value) renderLineChart(trendRes.data.data)
+      })
+    }
+  } catch (error) {
+    console.error('获取数据失败', error)
+  }
+}
+
+/**
+ * 计算最高频分类
+ * 统计各分类出现次数，找出最多的
+ */
+const calculateTopCategory = () => {
+  if (allData.value.length === 0) return
+
+  // 统计各分类出现次数
+  const map: Record<string, number> = {}
+  allData.value.forEach((item) => {
+    map[item.category] = (map[item.category] || 0) + 1
+  })
+
+  // 找出最大值
+  let max = 0
+  let name = ''
+  for (const key in map) {
+    if (map[key] > max) {
+      max = map[key]
+      name = key
+    }
+  }
+
+  topCategory.value = name
+  topCategoryPercent.value = ((max / totalCount.value) * 100).toFixed(1)
+}
+
+// ===== ECharts 图表渲染 =====
+
+let pieChart: any = null // 饼图实例
+let lineChart: any = null // 折线图实例
+
+/**
+ * 渲染饼图 - 费用类型分布
+ */
+const renderPieChart = () => {
+  // 初始化 ECharts 实例
+  pieChart = echarts.init(pieChartRef.value)
+
+  // 数据聚合: 按分类统计金额
+  const map: Record<string, number> = {}
+  allData.value.forEach((item) => {
+    map[item.category] = (map[item.category] || 0) + item.amount
+  })
+  // 转换为 ECharts 所需的数据格式
+  const data = Object.keys(map).map((key) => ({ value: map[key], name: key }))
+
+  // 配置饼图选项
+  pieChart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: ¥{c} ({d}%)' },
+    legend: { bottom: '0%', left: 'center' },
+    color: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de'],
+    series: [
+      {
+        name: '费用分布',
+        type: 'pie',
+        radius: ['40%', '70%'], // 空心饼图
+        avoidLabelOverlap: false,
+        itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+        label: { show: false },
+        emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
+        data: data,
+      },
+    ],
+  })
+}
+
+/**
+ * 渲染折线图 - 支出趋势与 AI 预测
+ *
+ * 图表包含两条线:
+ * 1. 实线: 历史真实支出数据
+ * 2. 虚线: 基于线性回归的下月预测值
+ *
+ * @param chartData - 后端返回的趋势数据
+ */
+const renderLineChart = (chartData: any) => {
+  lineChart = echarts.init(lineChartRef.value)
+
+  // 构造 X 轴: 历史月份 + 下月预测
+  const nextLabel = chartData.nextMonthLabel || '下月预测'
+  const xData = [...chartData.months, nextLabel]
+
+  // 构造 Y 轴数据
+  // 1. 真实数据系列: 最后补一个 null，让实线在此断开
+  const realSeries = [...chartData.amounts, null]
+
+  // 2. 预测数据系列: 前面补 null，只画最后一段虚线
+  // 为了让虚线和实线连接起来，预测系列的起点是真实数据的最后一个点
+  const lastRealValue = chartData.amounts[chartData.amounts.length - 1] || 0
+  const predictSeries = new Array(chartData.amounts.length - 1).fill(null)
+  predictSeries.push(lastRealValue) // 连接点
+  predictSeries.push(Number(chartData.prediction).toFixed(2)) // 预测点
+
+  // 配置折线图选项
+  lineChart.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', boundaryGap: false, data: xData },
+    yAxis: { type: 'value' },
+    legend: { data: ['实际支出', 'AI预测'] },
+    series: [
+      {
+        name: '实际支出',
+        type: 'line',
+        data: realSeries,
+        smooth: true,
+        lineStyle: { width: 3, color: '#409EFF' },
+        // 面积渐变填充
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(64,158,255,0.5)' },
+            { offset: 1, color: 'rgba(64,158,255,0.01)' },
+          ]),
+        },
+      },
+      {
+        name: 'AI预测',
+        type: 'line',
+        data: predictSeries,
+        smooth: false, // 预测线用直线表示线性回归
+        lineStyle: { width: 3, color: '#E6A23C', type: 'dashed' }, // 虚线样式
+        itemStyle: { color: '#E6A23C' },
+        label: {
+          show: true,
+          position: 'top',
+          formatter: '预测\n¥{c}',
+          fontSize: 12,
+          color: '#E6A23C',
+        },
+      },
+    ],
+  })
+}
+
+/**
+ * 窗口尺寸变化处理
+ * 重新调整图表尺寸以适应新的容器大小
+ */
+const handleResize = () => {
+  pieChart?.resize()
+  lineChart?.resize()
+}
+</script>
+
+<style scoped>
+.dashboard-container {
+  padding: 24px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow-y: auto;
+}
+
+/* 顶部卡片 */
+.stats-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.card-item {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+}
+.card-content {
+  z-index: 2;
+  position: relative;
+}
+.meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.label {
+  color: #909399;
+  font-size: 14px;
+}
+.value {
+  font-size: 28px;
+  font-weight: bold;
+  color: #303133;
+  margin-bottom: 12px;
+  font-family: monospace;
+}
+.footer {
+  font-size: 12px;
+  color: #c0c4cc;
+}
+
+/* 图标背景装饰 */
+.icon-bg {
+  position: absolute;
+  right: -10px;
+  bottom: -10px;
+  font-size: 100px;
+  opacity: 0.1;
+  transform: rotate(-15deg);
+}
+.icon-bg.success {
+  color: #67c23a;
+}
+.icon-bg.warning {
+  color: #e6a23c;
+}
+.icon-bg.primary {
+  color: #409eff;
+}
+
+/* 图表区 */
+.charts-row {
+  display: flex;
+  gap: 24px;
+  flex: 1;
+  min-height: 400px;
+}
+.chart-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+}
+.chart-header {
+  font-weight: bold;
+  font-size: 16px;
+  color: #303133;
+  display: flex;
+  align-items: center;
+}
+.chart-box {
+  width: 100%;
+  height: 350px; /* 固定高度 */
+  margin-top: 10px;
+}
+
+@media (max-width: 1000px) {
+  .stats-cards {
+    grid-template-columns: 1fr;
+  }
+  .charts-row {
+    flex-direction: column;
+  }
+}
+</style>
